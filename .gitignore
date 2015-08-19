@@ -1,0 +1,20 @@
+# compiled object files
+*.ppu
+*.o
+*.or
+*.bak
+*.ppw
+*.ppl
+*.a
+*.compiled
+*.lps
+*.dbg
+
+# lazarus editor backup directories
+backup
+
+# build destination directories and other untracked binaries explicitly defined
+bin
+lib
+obj
+*.jar
