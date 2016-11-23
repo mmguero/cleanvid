@@ -35,12 +35,10 @@
       <Unit0>
         <Filename Value="cleanvid.lpr"/>
         <IsPartOfProject Value="True"/>
-        <UnitName Value="cleanvid"/>
       </Unit0>
       <Unit1>
         <Filename Value="cvutil.pas"/>
         <IsPartOfProject Value="True"/>
-        <UnitName Value="cvutil"/>
       </Unit1>
     </Units>
   </ProjectOptions>
@@ -55,11 +53,7 @@
       <UnitOutputDirectory Value="lib/$(TargetCPU)-$(TargetOS)"/>
     </SearchPaths>
     <Other>
-      <CompilerMessages>
-        <MsgFileName Value=""/>
-      </CompilerMessages>
       <CustomOptions Value="-dNoDataBase"/>
-      <CompilerPath Value="$(CompPath)"/>
     </Other>
   </CompilerOptions>
   <Debugging>

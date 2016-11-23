@@ -47,6 +47,8 @@ var
   verbose : boolean;
   noDelete : boolean;
   manualCmdMode : boolean;
+  scriptCmdMode : boolean;
+  scriptPath : string;
 
 procedure UpdateStatus(const Handle : pointer;
                        const Status : string);
@@ -822,6 +824,7 @@ var
   streams : TList;
   streamPtr : PStreamInfo;
   audioStreamCount : integer;
+  scriptContents : TStringList = nil;
   selectLine : string;
 begin
   tmpAudioFile := '';
@@ -832,6 +835,11 @@ begin
   ecaSoundPairs := TStringList.Create;
   cmdOutput := TStringList.Create;
   streams := TList.Create;
+  if scriptCmdMode then begin
+    scriptContents := TStringList.Create;
+    scriptContents.Add('#!/bin/sh');
+    scriptContents.Add('');
+  end;
   try
     edlRegExpr.Expression := '([\d\.]+)\s+([\d\.]+)(\s+(\d|-))?';
 
@@ -921,7 +929,11 @@ begin
       writeln(stderr, 'Exctracting audio from video file...');
       writeln(stderr, command);
     end;
-    if manualCmdMode then begin
+    if scriptCmdMode then begin
+      scriptContents.Add(command);
+      cmdSuccess := true;
+      exCode := 0;
+    end else if manualCmdMode then begin
       writeln('Run this command to extract audio from video file, then press ENTER');
       writeln(command);
       readln();
@@ -931,7 +943,7 @@ begin
       cmdSuccess := cvutil.ExecuteProcessWithCallBack(command,
                       exCode, @UpdateStatus, @verbose, @CheckCancelled, @doTerminate);
     end;
-    if (not cmdSuccess) or (exCode <> 0) or (not FileExists(tmpAudioFile)) then begin
+    if (not scriptCmdMode) and ((not cmdSuccess) or (exCode <> 0) or (not FileExists(tmpAudioFile))) then begin
       raise Exception.Create('Unable to extract audio');
     end;
 
@@ -961,7 +973,11 @@ begin
       writeln(stderr, 'Applying EDL to audio...');
       writeln(stderr, command);
     end;
-    if manualCmdMode then begin
+    if scriptCmdMode then begin
+      scriptContents.Add(command);
+      cmdSuccess := true;
+      exCode := 0;
+    end else if manualCmdMode then begin
       writeln('Run this command to apply EDL to audio, then press ENTER');
       writeln(command);
       readln();
@@ -971,7 +987,7 @@ begin
       cmdSuccess := cvutil.ExecuteProcessWithCallBack(command,
                       exCode, @UpdateStatus, @verbose, @CheckCancelled, @doTerminate);
     end;
-    if (not cmdSuccess) or (exCode <> 0) or (not FileExists(newAudioFile)) then begin
+    if (not scriptCmdMode) and ((not cmdSuccess) or (exCode <> 0) or (not FileExists(newAudioFile))) then begin
       raise Exception.Create('Unable to apply EDL to audio');
     end;
 
@@ -982,7 +998,11 @@ begin
       writeln(stderr, 'Multiplexing...');
       writeln(stderr, command);
     end;
-    if manualCmdMode then begin
+    if scriptCmdMode then begin
+      scriptContents.Add(command);
+      cmdSuccess := true;
+      exCode := 0;
+    end else if manualCmdMode then begin
       writeln('Run this command to remultiplex, then press ENTER');
       writeln(command);
       readln();
@@ -992,7 +1012,7 @@ begin
       cmdSuccess := cvutil.ExecuteProcessWithCallBack(command,
                       exCode, @UpdateStatus, @verbose, @CheckCancelled, @doTerminate);
     end;
-    if (not cmdSuccess) or (exCode <> 0) or (not FileExists(outVideoFile)) then begin
+    if (not scriptCmdMode) and ((not cmdSuccess) or (exCode <> 0) or (not FileExists(outVideoFile))) then begin
       raise Exception.Create('Unable to remultiplex audio and video');
     end;
 
@@ -1017,6 +1037,13 @@ begin
       if (tmpAudioFile <> '') and FileExists(tmpAudioFile) then DeleteFile(tmpAudioFile);
       if (newAudioFile <> '') and FileExists(newAudioFile) then DeleteFile(newAudioFile);
     end;
+    if Assigned(scriptContents) then begin
+      if not noDelete then begin
+        scriptContents.Add('rm -f "' + tmpAudioFile + '" "' + newAudioFile + '"');
+      end;
+      scriptContents.SaveToFile(scriptPath);
+      FreeAndNil(scriptContents);
+    end;
   end;
 
 end;
@@ -1035,7 +1062,7 @@ begin
   ExitCode := 1;
 
   { quick check parameters }
-  errorMsg := CheckOptions('hvi:o:s:', 'help verbose in: out: swears: sub: nodel manual');
+  errorMsg := CheckOptions('hvi:o:s:', 'help verbose in: out: swears: sub: nodel manual script:');
   if (errorMsg <> '') then begin
     ShowException(Exception.Create(errorMsg));
     Terminate;
@@ -1052,7 +1079,9 @@ begin
 
   verbose := HasOption('v','verbose');
   noDelete := HasOption('nodel');
-  manualCmdMode := HasOption('manual');
+  scriptPath := GetOptionValue('script');
+  scriptCmdMode := (scriptPath <> '');
+  manualCmdMode := (not scriptCmdMode) and HasOption('manual');
 
   { make sure we have a swears file }
   swearsFile := GetOptionValue('swears');
