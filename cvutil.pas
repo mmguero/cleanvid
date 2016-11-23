@@ -157,14 +157,26 @@ begin
   end;
 end;
 
+type
+  TDisinheritExecProcess = class(TProcess)
+    {$IFDEF UNIX}{$IF (FPC_VERSION >= 3)}
+    public
+      procedure DisinheritDescriptors(obj : TObject);
+    {$IFEND}{$ENDIF}
+  end;
+
 {$IFDEF UNIX}
 { should be called in the context of the child after the fork; used to
   close all file descriptors inherited from the parent }
+{$IF (FPC_VERSION >= 3)}
+procedure TDisinheritExecProcess.DisinheritDescriptors(obj : TObject);
+{$ELSE}
 procedure DisinheritDescriptors;
+{$IFEND}
 const
   MAX_FD = 16384;
 var
-  fdIdx : integer;
+  fdIdx : longint;
 begin
   for fdIdx := 3 to MAX_FD-1 do begin
     fpclose(fdIdx);
@@ -190,7 +202,7 @@ const
 var
   buffer : array of byte;
   buff_idx : longint;
-  proc : TProcess;
+  proc : TDisinheritExecProcess;
   start_time : TDateTime;
   status_regex : TRegExpr;
   cancelCheckLastTime : TDateTime;
@@ -248,14 +260,16 @@ begin
       status_regex := nil;
     end;
 
-    proc := TProcess.Create(nil);
+    proc := TDisinheritExecProcess.Create(nil);
     try
 
       SetLength(buffer, BUFF_SIZE);
       buff_idx := 0;
       proc.Options := [poUsePipes, poStderrToOutPut];
       {$IFDEF UNIX}
-      if not inheritHandles then proc.OnForkEvent := @DisinheritDescriptors;
+      if not inheritHandles then begin
+        proc.{$IFDEF ver2_4_2}ForkEvent{$ELSE}OnForkEvent{$ENDIF} := @{$IF (FPC_VERSION >= 3)}proc.{$IFEND}DisinheritDescriptors;
+      end;
       {$ELSE}
       proc.InheritHandles := inheritHandles;
       {$ENDIF}
@@ -340,7 +354,7 @@ function ExecuteProcess
 const
   READ_BYTES = 2048;
 var
-  P : TProcess;
+  P : TDisinheritExecProcess;
   buffer : array of byte;
   tmpStdOutput : TMemoryStream;
   tmpStdError : TMemoryStream;
@@ -412,13 +426,15 @@ begin
 
   try
     SetLength(buffer, READ_BYTES);
-    P := TProcess.Create(nil);
+    P := TDisinheritExecProcess.Create(nil);
     try
       P.CommandLine := command;
       P.Options := [poUsePipes];
       if redirectErr then P.Options := P.Options + [poStderrToOutPut];
       {$IFDEF UNIX}
-      if not inheritHandles then p.OnForkEvent := @DisinheritDescriptors;
+      if not inheritHandles then begin
+        P.{$IFDEF ver2_4_2}ForkEvent{$ELSE}OnForkEvent{$ENDIF} := @{$IF (FPC_VERSION >= 3)}P.{$IFEND}DisinheritDescriptors;
+      end;
       {$ELSE}
       P.InheritHandles := inheritHandles;
       {$ENDIF}
