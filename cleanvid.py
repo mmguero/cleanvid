@@ -132,11 +132,13 @@ class VidCleaner(object):
 #################################################################################
 if __name__ == '__main__':
   parser = argparse.ArgumentParser()
-  parser.add_argument('-s', '--subs')
-  parser.add_argument('-i', '--input')
-  parser.add_argument('-o', '--output')
-  parser.add_argument('-w', '--swears', default=os.path.join(__location__, 'swears.txt'))
-  parser.add_argument('-l', '--lang', default='eng')
+  parser.add_argument('-s', '--subs',   help='.srt subtitle file (will attempt auto-download if unspecified)', metavar='<srt>')
+  parser.add_argument('-i', '--input',  help='input video file', metavar='<input video>')
+  parser.add_argument('-o', '--output', help='output video file', metavar='<output video>')
+  parser.add_argument('-w', '--swears', help='text file containing profanity (with optional mapping)', \
+                                        default=os.path.join(__location__, 'swears.txt'), \
+                                        metavar='<profanity file>')
+  parser.add_argument('-l', '--lang',   help='language for srt download (default is "eng")', default='eng', metavar='<language>')
   args = parser.parse_args()
 
   inFile = args.input
