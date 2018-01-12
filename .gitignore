@@ -2,4 +2,5 @@
 *.srt
 *.mp4
 *.mkv
+*.py_streaminfo
 
