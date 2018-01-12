@@ -1,20 +1,5 @@
-# compiled object files
-*.ppu
-*.o
-*.or
-*.bak
-*.ppw
-*.ppl
-*.a
-*.compiled
-*.lps
-*.dbg
+*.pyc
+*.srt
+*.mp4
+*.mkv
 
-# lazarus editor backup directories
-backup
-
-# build destination directories and other untracked binaries explicitly defined
-bin
-lib
-obj
-*.jar
