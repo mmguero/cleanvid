@@ -1,4 +1,4 @@
-#!/usr/bin/env python2
+#!/usr/bin/env python3
 
 import argparse
 import errno
@@ -123,7 +123,7 @@ class VidCleaner(object):
                     " -c:a aac -ac 2 -ab 224k -ar 44100 \"" + \
                     self.outputVidFileSpec + "\"", block=True)
     if (ffmpegResult.return_code != 0) or (not os.path.isfile(self.outputVidFileSpec)):
-      print ffmpegResult.err
+      print(ffmpegResult.err)
       raise ValueError('Could not process %s' % (self.inputVidFileSpec))
 
 #################################################################################

@@ -7,11 +7,22 @@ pair as the key's value (values become dictionaries)."""
 
     def __init__(self, initval={}):
         if isinstance(initval, dict):
-            for key, value in initval.iteritems():
+            for key, value in initval.items():
                 self.__setitem__(key, value)
         elif isinstance(initval, list):
             for (key, value) in initval:
                 self.__setitem__(key, value)
+
+    # __repr__ for writing just a name in the interpetr
+    def __repr__(self):
+        ans = dict()
+        for key, val in self.items():
+            ans[key] = val
+        return str(ans)
+
+    # __str__ for print()
+    def __str__(self):
+        return self.__repr__()
 
     def __contains__(self, key):
         return dict.__contains__(self, key.lower())
@@ -20,39 +31,44 @@ pair as the key's value (values become dictionaries)."""
         return dict.__getitem__(self, key.lower())['val']
 
     def __setitem__(self, key, value):
-        return dict.__setitem__(self, key.lower(), {'key': key, 'val': value})
+        try:
+            return dict.__setitem__(self, key.lower(), {'key': key, 'val': value})
+        except AttributeError:
+            return dict.__setitem__(self, key, {'key': key, 'val': value})
 
     def get(self, key, default=None):
         try:
-            v = dict.__getitem__(self, key.lower())
+            return dict.__getitem__(self, str(key).lower())['val']
         except KeyError:
             return default
-        else:
-            return v['val']
 
-    def has_key(self,key):
+    def has_key(self, key):
         if self.get(key):
             return True
         else:
             return False
 
     def items(self):
-        return [(v['key'], v['val']) for v in dict.itervalues(self)]
+        for v in dict.values(self):
+            yield (v['key'], v['val'])
 
     def keys(self):
-        return [v['key'] for v in dict.itervalues(self)]
-
-    def values(self):
-        return [v['val'] for v in dict.itervalues(self)]
-
-    def iteritems(self):
-        for v in dict.itervalues(self):
-            yield v['key'], v['val']
-
-    def iterkeys(self):
-        for v in dict.itervalues(self):
+        for v in dict.values(self):
             yield v['key']
 
-    def itervalues(self):
-        for v in dict.itervalues(self):
+    def values(self):
+        for v in dict.values(self):
             yield v['val']
+
+    # i'v added
+    def printable(self, sep=', ', key=None):
+        if key is None:
+            key = self.keys
+        try:
+            return sep.join(key())
+        except TypeError:
+            ans = ''
+            for v in key():
+                ans += str(v)
+                ans += sep
+            return ans[:-len(sep)]
