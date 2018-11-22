@@ -7,13 +7,9 @@ import sys
 import re
 import pysrt
 import delegator
-from babelfish import *
 from subliminal import *
 from caselessdictionary import CaselessDictionary
 
-__author__ = "Seth Grover"
-__copyright__ = "Copyright 2018 Seth Grover"
-__licence__ = "MIT"
 __location__ = os.path.realpath(
     os.path.join(os.getcwd(), os.path.dirname(__file__)))
 
