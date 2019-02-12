@@ -8,6 +8,7 @@ import re
 import pysrt
 import delegator
 from subliminal import *
+from babelfish import Language
 from caselessdictionary import CaselessDictionary
 
 __location__ = os.path.realpath(
