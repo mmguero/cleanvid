@@ -13,7 +13,6 @@ pair as the key's value (values become dictionaries)."""
             for (key, value) in initval:
                 self.__setitem__(key, value)
 
-    # __repr__ for writing just a name in the interpetr
     def __repr__(self):
         ans = dict()
         for key, val in self.items():
@@ -60,7 +59,6 @@ pair as the key's value (values become dictionaries)."""
         for v in dict.values(self):
             yield v['val']
 
-    # i'v added
     def printable(self, sep=', ', key=None):
         if key is None:
             key = self.keys

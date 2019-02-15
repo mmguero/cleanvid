@@ -14,12 +14,6 @@ from caselessdictionary import CaselessDictionary
 __location__ = os.path.realpath(
     os.path.join(os.getcwd(), os.path.dirname(__file__)))
 
-def xstr(s):
-  if s is None:
-    return ''
-  else:
-    return s
-
 ######## GetSubtitles #########################################################
 def GetSubtitles(vidFileSpec, srtLanguage):
   subFileSpec = ""
