@@ -11,7 +11,7 @@ from subliminal import *
 from babelfish import Language
 from caselessdictionary import CaselessDictionary
 
-__location__ = os.path.realpath(os.path.dirname(__file__))
+__location__ = os.path.dirname(os.path.realpath(__file__))
 
 ######## GetSubtitles #########################################################
 def GetSubtitles(vidFileSpec, srtLanguage):
