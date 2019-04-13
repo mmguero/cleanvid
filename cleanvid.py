@@ -67,9 +67,12 @@ class VidCleaner(object):
       os.remove(self.cleanSubsFileSpec)
 
   ######## CreateCleanSubAndMuteList #################################################
-  def CreateCleanSubAndMuteList(self):
+  def CreateCleanSubAndMuteList(self, cleanSubsFileSpec=None):
     subFileParts = os.path.splitext(self.inputSubsFileSpec)
-    self.cleanSubsFileSpec = subFileParts[0] + "_clean" + subFileParts[1]
+    if cleanSubsFileSpec is not None:
+      self.cleanSubsFileSpec = cleanSubsFileSpec
+    else:
+      self.cleanSubsFileSpec = subFileParts[0] + "_clean" + subFileParts[1]
 
     lines = []
 
@@ -125,6 +128,7 @@ if __name__ == '__main__':
   parser.add_argument('-s', '--subs',   help='.srt subtitle file (will attempt auto-download if unspecified)', metavar='<srt>')
   parser.add_argument('-i', '--input',  help='input video file', metavar='<input video>')
   parser.add_argument('-o', '--output', help='output video file', metavar='<output video>')
+  parser.add_argument(      '--subs-output', help='output subtitle file', metavar='<output srt>', dest="subsOut")
   parser.add_argument('-w', '--swears', help='text file containing profanity (with optional mapping)', \
                                         default=os.path.join(__location__, 'swears.txt'), \
                                         metavar='<profanity file>')
@@ -134,7 +138,6 @@ if __name__ == '__main__':
   inFile = args.input
   outFile = args.output
   subsFile = args.subs
-  swearsFile = args.swears
   lang = args.lang
   if inFile:
     inFileParts = os.path.splitext(inFile)
@@ -143,8 +146,8 @@ if __name__ == '__main__':
     if (not subsFile):
       subsFile = GetSubtitles(inFile, lang)
 
-  cleaner = VidCleaner(inFile, subsFile, outFile, swearsFile)
-  cleaner.CreateCleanSubAndMuteList()
+  cleaner = VidCleaner(inFile, subsFile, outFile, args.swears)
+  cleaner.CreateCleanSubAndMuteList(cleanSubsFileSpec=args.subsOut)
   cleaner.MultiplexCleanVideo()
 
 #################################################################################
