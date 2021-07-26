@@ -75,11 +75,12 @@ class VidCleaner(object):
   outputVidFileSpec = ""
   swearsFileSpec = ""
   swearsPadMillisec = 0
+  fullSubs = False
   swearsMap = CaselessDictionary({})
   muteTimeList = []
 
   ######## init #################################################################
-  def __init__(self, iVidFileSpec, iSubsFileSpec, oVidFileSpec, oSubsFileSpec, iSwearsFileSpec, swearsPadSec=0):
+  def __init__(self, iVidFileSpec, iSubsFileSpec, oVidFileSpec, oSubsFileSpec, iSwearsFileSpec, swearsPadSec=0, fullSubs=False):
 
     if (iVidFileSpec is not None) and os.path.isfile(iVidFileSpec):
       self.inputVidFileSpec = iVidFileSpec
@@ -105,7 +106,7 @@ class VidCleaner(object):
           os.remove(self.cleanSubsFileSpec)
 
     self.swearsPadMillisec = swearsPadSec * 1000
-
+    self.fullSubs = fullSubs
 
   ######## del ##################################################################
   def __del__(self):
@@ -156,9 +157,9 @@ class VidCleaner(object):
       if ((newText != sub.text) or
             # we have defined a pad, and
           ((self.swearsPadMillisec > 0) and (newTextPeek is not None) and
-             # the next sub contains profanity and is within 5 seconds of this one, or
+             # the next sub contains profanity and is within pad seconds of this one, or
            (((newTextPeek != subPeek.text) and ((subPeek.start.ordinal - sub.end.ordinal) <= self.swearsPadMillisec)) or
-             # the previous sub contained profanity and is within 5 seconds of this one
+             # the previous sub contained profanity and is within pad seconds of this one
             ((prevNaughtySub is not None) and ((sub.start.ordinal - prevNaughtySub.end.ordinal) <= self.swearsPadMillisec))))):
         subScrubbed = (newText != sub.text)
         newSub = sub
@@ -173,6 +174,8 @@ class VidCleaner(object):
           newTimes = [sub.start.to_time(), sub.end.to_time()]
         newTimestampPairs.append(newTimes)
       else:
+        if self.fullSubs:
+          newSubs.append(sub)
         prevNaughtySub = None
 
     newSubs.save(self.cleanSubsFileSpec)
@@ -214,6 +217,8 @@ if __name__ == '__main__':
                                         metavar='<profanity file>')
   parser.add_argument('-l', '--lang',   help='language for srt download (default is "eng")', default='eng', metavar='<language>')
   parser.add_argument('-p', '--pad',    help='pad (seconds) around profanity', metavar='<int>', dest="pad", type=int, default=0)
+  parser.add_argument('--full-subs',    help='include all subtitles in output subtitle file (not just scrubbed)', dest='fullSubs', action='store_true')
+  parser.set_defaults(fullSubs=False)
   args = parser.parse_args()
 
   inFile = args.input
@@ -227,7 +232,7 @@ if __name__ == '__main__':
     if (not subsFile):
       subsFile = GetSubtitles(inFile, lang)
 
-  cleaner = VidCleaner(inFile, subsFile, outFile, args.subsOut, args.swears, args.pad)
+  cleaner = VidCleaner(inFile, subsFile, outFile, args.subsOut, args.swears, args.pad, args.fullSubs)
   cleaner.CreateCleanSubAndMuteList()
   cleaner.MultiplexCleanVideo()
 
