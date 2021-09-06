@@ -17,6 +17,9 @@ from itertools import tee
 
 __script_location__ = os.path.dirname(os.path.realpath(__file__))
 
+VIDEO_DEFAULT_PARAMS = '-c:v libx264 -preset slow -crf 22'
+AUDIO_DEFAULT_PARAMS = '-c:a aac -ac 2 -ab 224k -ar 44100'
+
 # thanks https://docs.python.org/3/library/itertools.html#recipes
 def pairwise(iterable):
   a, b = tee(iterable)
@@ -76,11 +79,15 @@ class VidCleaner(object):
   swearsFileSpec = ""
   swearsPadMillisec = 0
   fullSubs = False
+  hardCode = False
+  reEncode = False
+  vParams = AUDIO_DEFAULT_PARAMS
+  aParams = VIDEO_DEFAULT_PARAMS
   swearsMap = CaselessDictionary({})
   muteTimeList = []
 
   ######## init #################################################################
-  def __init__(self, iVidFileSpec, iSubsFileSpec, oVidFileSpec, oSubsFileSpec, iSwearsFileSpec, swearsPadSec=0, fullSubs=False):
+  def __init__(self, iVidFileSpec, iSubsFileSpec, oVidFileSpec, oSubsFileSpec, iSwearsFileSpec, swearsPadSec=0, fullSubs=False, reEncode=False, hardCode=False, vParams=VIDEO_DEFAULT_PARAMS, aParams=AUDIO_DEFAULT_PARAMS):
 
     if (iVidFileSpec is not None) and os.path.isfile(iVidFileSpec):
       self.inputVidFileSpec = iVidFileSpec
@@ -107,6 +114,11 @@ class VidCleaner(object):
 
     self.swearsPadMillisec = swearsPadSec * 1000
     self.fullSubs = fullSubs
+    self.reEncode = reEncode
+    self.hardCode = hardCode
+    self.vParams = vParams
+    self.aParams = aParams
+
 
   ######## del ##################################################################
   def __del__(self):
@@ -189,10 +201,17 @@ class VidCleaner(object):
   ######## MultiplexCleanVideo ###################################################
   def MultiplexCleanVideo(self):
     if len(self.muteTimeList) > 0:
-      ffmpegCmd = "ffmpeg -y -i \"" + self.inputVidFileSpec + "\"" + \
-                      " -c:v copy " + \
-                      " -af \"" + ",".join(self.muteTimeList) + "\"" \
-                      " -c:a aac -ac 2 -ab 224k -ar 44100 \"" + \
+      if self.reEncode or self.hardCode:
+        if self.hardCode and os.path.isfile(cleanSubsFileSpec):
+          videoArgs = f"{self.vParams} -vf subtitles={cleanSubsFileSpec}"
+        else:
+          videoArgs = self.vParams
+      else:
+        videoArgs = "-c:v copy"
+      ffmpegCmd = "ffmpeg -y -i \"" + self.inputVidFileSpec + "\" " + \
+                      videoArgs + \
+                      " -af \"" + ",".join(self.muteTimeList) + "\" " \
+                      f"{self.aParams} \"" + \
                       self.outputVidFileSpec + "\""
       ffmpegResult = delegator.run(ffmpegCmd, block=True)
       if (ffmpegResult.return_code != 0) or (not os.path.isfile(self.outputVidFileSpec)):
@@ -208,16 +227,22 @@ class VidCleaner(object):
 #################################################################################
 if __name__ == '__main__':
   parser = argparse.ArgumentParser()
-  parser.add_argument('-s', '--subs',   help='.srt subtitle file (will attempt auto-download if unspecified)', metavar='<srt>')
-  parser.add_argument('-i', '--input',  help='input video file', metavar='<input video>')
-  parser.add_argument('-o', '--output', help='output video file', metavar='<output video>')
-  parser.add_argument(      '--subs-output', help='output subtitle file', metavar='<output srt>', dest="subsOut")
-  parser.add_argument('-w', '--swears', help='text file containing profanity (with optional mapping)', \
-                                        default=os.path.join(__script_location__, 'swears.txt'), \
-                                        metavar='<profanity file>')
-  parser.add_argument('-l', '--lang',   help='language for srt download (default is "eng")', default='eng', metavar='<language>')
-  parser.add_argument('-p', '--pad',    help='pad (seconds) around profanity', metavar='<int>', dest="pad", type=int, default=0)
-  parser.add_argument('--full-subs',    help='include all subtitles in output subtitle file (not just scrubbed)', dest='fullSubs', action='store_true')
+  parser.add_argument('-s', '--subs',         help='.srt subtitle file (will attempt auto-download if unspecified)', metavar='<srt>')
+  parser.add_argument('-i', '--input',        help='input video file', metavar='<input video>')
+  parser.add_argument('-o', '--output',       help='output video file', metavar='<output video>')
+  parser.add_argument(      '--subs-output',  help='output subtitle file', metavar='<output srt>', dest="subsOut")
+  parser.add_argument('-w', '--swears',       help='text file containing profanity (with optional mapping)', \
+                                              default=os.path.join(__script_location__, 'swears.txt'), \
+                                              metavar='<profanity file>')
+  parser.add_argument('-l', '--lang',         help='language for srt download (default is "eng")', default='eng', metavar='<language>')
+  parser.add_argument('-p', '--pad',          help='pad (seconds) around profanity', metavar='<int>', dest="pad", type=int, default=0)
+  parser.add_argument('-f', '--full-subs',    help='include all subtitles in output subtitle file (not just scrubbed)', dest='fullSubs', action='store_true')
+  parser.add_argument('-r', '--re-encode',    help='Re-encode video', dest='reEncode', action='store_true')
+  parser.add_argument('-h', '--hard-code',    help='Hard-coded subtitles (implies re-encode)', dest='hardCode', action='store_true')
+  parser.add_argument('-v', '--video-params', help='Video parameters for ffmpeg (only if re-encoding)', dest='vParams',
+                                              default=VIDEO_DEFAULT_PARAMS)
+  parser.add_argument('-a', '--audio-params', help='Audio parameters for ffmpeg', dest='aParams',
+                                              default=AUDIO_DEFAULT_PARAMS)
   parser.set_defaults(fullSubs=False)
   args = parser.parse_args()
 
@@ -232,7 +257,9 @@ if __name__ == '__main__':
     if (not subsFile):
       subsFile = GetSubtitles(inFile, lang)
 
-  cleaner = VidCleaner(inFile, subsFile, outFile, args.subsOut, args.swears, args.pad, args.fullSubs)
+  cleaner = VidCleaner(inFile, subsFile, outFile, args.subsOut, args.swears,
+                       args.pad, args.fullSubs, args.reEncode, args.hardCode,
+                       args.vParams, args.aParams)
   cleaner.CreateCleanSubAndMuteList()
   cleaner.MultiplexCleanVideo()
 
