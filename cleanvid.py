@@ -202,8 +202,8 @@ class VidCleaner(object):
   def MultiplexCleanVideo(self):
     if len(self.muteTimeList) > 0:
       if self.reEncode or self.hardCode:
-        if self.hardCode and os.path.isfile(cleanSubsFileSpec):
-          videoArgs = f"{self.vParams} -vf subtitles={cleanSubsFileSpec}"
+        if self.hardCode and os.path.isfile(self.cleanSubsFileSpec):
+          videoArgs = f"{self.vParams} -vf subtitles={self.cleanSubsFileSpec}"
         else:
           videoArgs = self.vParams
       else:
