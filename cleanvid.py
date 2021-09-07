@@ -238,7 +238,7 @@ if __name__ == '__main__':
   parser.add_argument('-p', '--pad',          help='pad (seconds) around profanity', metavar='<int>', dest="pad", type=int, default=0)
   parser.add_argument('-f', '--full-subs',    help='include all subtitles in output subtitle file (not just scrubbed)', dest='fullSubs', action='store_true')
   parser.add_argument('-r', '--re-encode',    help='Re-encode video', dest='reEncode', action='store_true')
-  parser.add_argument('-h', '--hard-code',    help='Hard-coded subtitles (implies re-encode)', dest='hardCode', action='store_true')
+  parser.add_argument('-b', '--burn',         help='Hard-coded subtitles (implies re-encode)', dest='hardCode', action='store_true')
   parser.add_argument('-v', '--video-params', help='Video parameters for ffmpeg (only if re-encoding)', dest='vParams',
                                               default=VIDEO_DEFAULT_PARAMS)
   parser.add_argument('-a', '--audio-params', help='Audio parameters for ffmpeg', dest='aParams',
