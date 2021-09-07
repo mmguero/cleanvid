@@ -60,7 +60,9 @@ This project is licensed under the Apache License, v2.0 - see the [LICENSE](LICE
 ## Acknowledgments
 
 Thanks to:
+
 * the developers of [FFmpeg](https://www.ffmpeg.org/about.html)
+* [linuxserver.io](https://www.linuxserver.io/) for their [ffmpeg](https://docs.linuxserver.io/images/docker-ffmpeg) image
 * [delegator.py](https://github.com/kennethreitz/delegator.py) developer Kenneth Reitz and contributors
 * [pysrt](https://github.com/byroot/pysrt) developer Jean Boussier and contributors
 * [subliminal](https://github.com/Diaoul/subliminal) developer Antoine Bertin and contributors
