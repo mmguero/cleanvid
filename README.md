@@ -41,6 +41,10 @@ optional arguments:
                         language for srt download (default is "eng")
 ```
 
+### Docker
+
+Alternately, a [Dockerfile](Dockerfile) is provided to allow you to run cleanvid in Docker. You can build the `mmguero/cleanvid:latest` Docker image with [`build_docker.sh`](build_docker.sh), then run [`cleanvid-docker.sh`](montag-docker.sh) inside the directory where your video/subtitle files are located.
+
 ## Contributing
 
 If you'd like to help improve cleanvid, pull requests will be welcomed!
