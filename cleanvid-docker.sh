@@ -6,6 +6,6 @@ export CLEANVID_IMAGE="${CLEANVID_DOCKER_IMAGE:-ghcr.io/mmguero/cleanvid:latest}
 
 docker run --rm -t \
   -u $(id -u):$(id -g) \
-  -v $(realpath "${PWD}"):${PWD} \
-  -w $(realpath "${PWD}") \
+  -v "$(realpath "${PWD}"):${PWD}" \
+  -w "${PWD}" \
   "$CLEANVID_IMAGE" "$@"

@@ -75,6 +75,7 @@ class VidCleaner(object):
   inputSubsFileSpec = ""
   cleanSubsFileSpec = ""
   tmpSubsFileSpec = ""
+  assSubsFileSpec = ""
   outputVidFileSpec = ""
   swearsFileSpec = ""
   swearsPadMillisec = 0
@@ -126,6 +127,8 @@ class VidCleaner(object):
       os.remove(self.cleanSubsFileSpec)
     if os.path.isfile(self.tmpSubsFileSpec):
       os.remove(self.tmpSubsFileSpec)
+    if os.path.isfile(self.assSubsFileSpec):
+      os.remove(self.assSubsFileSpec)
 
   ######## CreateCleanSubAndMuteList #################################################
   def CreateCleanSubAndMuteList(self):
@@ -200,9 +203,18 @@ class VidCleaner(object):
 
   ######## MultiplexCleanVideo ###################################################
   def MultiplexCleanVideo(self):
+
     if self.reEncode or self.hardCode:
       if self.hardCode and os.path.isfile(self.cleanSubsFileSpec):
-        videoArgs = f"{self.vParams} -vf subtitles={self.cleanSubsFileSpec}"
+        self.assSubsFileSpec = self.cleanSubsFileSpec + '.ass'
+        subConvCmd = f"ffmpeg -y -i {self.cleanSubsFileSpec} {self.assSubsFileSpec}"
+        subConvResult = delegator.run(subConvCmd, block=True)
+        if (subConvResult.return_code == 0) and os.path.isfile(self.assSubsFileSpec):
+          videoArgs = f"{self.vParams} -vf \"ass={self.assSubsFileSpec}\""
+        else:
+          print(subConvCmd)
+          print(subConvResult.err)
+          raise ValueError(f'Could not process {self.cleanSubsFileSpec}')
       else:
         videoArgs = self.vParams
     else:
