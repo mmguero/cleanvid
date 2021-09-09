@@ -11,7 +11,7 @@ ENV PYTHONUNBUFFERED 1
 
 ADD requirements.txt /tmp/requirements.txt
 
-RUN apk add --update --no-cache py3-pip ttf-freefont && \
+RUN apk add --update --no-cache py3-pip ttf-liberation && \
     python3 -m ensurepip && \
     python3 -m pip install --no-cache --upgrade -r /tmp/requirements.txt && \
     rm -f /tmp/requirements.txt
