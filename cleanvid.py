@@ -200,26 +200,27 @@ class VidCleaner(object):
 
   ######## MultiplexCleanVideo ###################################################
   def MultiplexCleanVideo(self):
-    if len(self.muteTimeList) > 0:
-      if self.reEncode or self.hardCode:
-        if self.hardCode and os.path.isfile(self.cleanSubsFileSpec):
-          videoArgs = f"{self.vParams} -vf subtitles={self.cleanSubsFileSpec}"
-        else:
-          videoArgs = self.vParams
+    if self.reEncode or self.hardCode:
+      if self.hardCode and os.path.isfile(self.cleanSubsFileSpec):
+        videoArgs = f"{self.vParams} -vf subtitles={self.cleanSubsFileSpec}"
       else:
-        videoArgs = "-c:v copy"
-      ffmpegCmd = "ffmpeg -y -i \"" + self.inputVidFileSpec + "\" " + \
-                      videoArgs + \
-                      " -af \"" + ",".join(self.muteTimeList) + "\" " \
-                      f"{self.aParams} \"" + \
-                      self.outputVidFileSpec + "\""
-      ffmpegResult = delegator.run(ffmpegCmd, block=True)
-      if (ffmpegResult.return_code != 0) or (not os.path.isfile(self.outputVidFileSpec)):
-        print(ffmpegCmd)
-        print(ffmpegResult.err)
-        raise ValueError(f'Could not process {self.inputVidFileSpec}')
+        videoArgs = self.vParams
     else:
-      shutil.copy2(self.inputVidFileSpec, self.outputVidFileSpec)
+      videoArgs = "-c:v copy"
+    if len(self.muteTimeList) > 0:
+      audioArgs = " -af \"" + ",".join(self.muteTimeList) + "\" "
+    else:
+      audioArgs = " "
+    ffmpegCmd = "ffmpeg -y -i \"" + self.inputVidFileSpec + "\" " + \
+                    videoArgs + \
+                    audioArgs + \
+                    f"{self.aParams} \"" + \
+                    self.outputVidFileSpec + "\""
+    ffmpegResult = delegator.run(ffmpegCmd, block=True)
+    if (ffmpegResult.return_code != 0) or (not os.path.isfile(self.outputVidFileSpec)):
+      print(ffmpegCmd)
+      print(ffmpegResult.err)
+      raise ValueError(f'Could not process {self.inputVidFileSpec}')
 
 #################################################################################
 
