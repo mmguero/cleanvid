@@ -1,6 +1,7 @@
 #!/usr/bin/env python3
 
 import argparse
+import base64
 import chardet
 import codecs
 import errno
@@ -119,7 +120,10 @@ class VidCleaner(object):
     self.hardCode = hardCode
     self.vParams = vParams
     self.aParams = aParams
-
+    if self.vParams.startswith('base64:'):
+      self.vParams = base64.b64decode(self.vParams[7:]).decode('utf-8')
+    if self.aParams.startswith('base64:'):
+      self.aParams = base64.b64decode(self.aParams[7:]).decode('utf-8')
 
   ######## del ##################################################################
   def __del__(self):
