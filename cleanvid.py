@@ -83,8 +83,8 @@ class VidCleaner(object):
   fullSubs = False
   hardCode = False
   reEncode = False
-  vParams = AUDIO_DEFAULT_PARAMS
-  aParams = VIDEO_DEFAULT_PARAMS
+  vParams = VIDEO_DEFAULT_PARAMS
+  aParams = AUDIO_DEFAULT_PARAMS
   swearsMap = CaselessDictionary({})
   muteTimeList = []
 

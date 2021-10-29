@@ -9,6 +9,12 @@ cleanvid is a little script to mute profanity in video files in a few simple ste
 
 You can then use your favorite media player to play the cleaned video file together with the cleaned srt file.
 
+cleanvid is part of a family of projects with similar goals:
+
+* [cleanvid](https://github.com/mmguero/cleanvid) for audio files
+* [monkeyplug](https://github.com/mmguero/monkeyplug) for ebooks
+* [montag](https://github.com/mmguero/montag) for ebooks
+
 ## Prerequisites
 
 [cleanvid](cleanvid.py) requires:
@@ -55,7 +61,7 @@ If you'd like to help improve cleanvid, pull requests will be welcomed!
 
 ## License
 
-This project is licensed under the Apache License, v2.0 - see the [LICENSE](LICENSE) file for details.
+This project is licensed under the BSD 3-Clause License - see the [LICENSE](LICENSE) file for details.
 
 ## Acknowledgments
 
@@ -66,7 +72,3 @@ Thanks to:
 * [delegator.py](https://github.com/kennethreitz/delegator.py) developer Kenneth Reitz and contributors
 * [pysrt](https://github.com/byroot/pysrt) developer Jean Boussier and contributors
 * [subliminal](https://github.com/Diaoul/subliminal) developer Antoine Bertin and contributors
-
-## Disclaimers
-
-By using cleanvid you understand and agree that its author(s) are in no way responsible for your actions. If cleanvid borks your system, or if you download a "pirated" movie and SWAT team of the copyright office of your respective nation busts down your door with a flash-bang grenade, or if cleanvid censors too much or too little and your feelings get hurt, or whatever, well, that's on you, dog.
