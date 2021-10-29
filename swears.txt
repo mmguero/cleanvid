@@ -1,3 +1,4 @@
+absofuckinglutely
 anal
 arse
 arse-hole
@@ -26,8 +27,8 @@ assgoblin
 asshat
 asshats
 asshead
-asshole|jerk
 assholes|jerks
+asshole|jerk
 asshopper
 assjacker
 asskiss
@@ -52,11 +53,13 @@ asswipe
 ass|bum
 ballsack
 ballsacks
-bastards
+bastards|jerks
 bastard|jerk
 batshit
 batshits
 beshitted
+birdshit
+birdshits
 bitchass
 bitches|broads
 bitchin
@@ -76,6 +79,10 @@ boner
 boshits
 brotherfucker
 bugfuck
+bugfucker
+bugfuckers
+bugfucking
+bugfucks
 bugshit
 bugshits
 bullshits
@@ -196,9 +203,9 @@ cuntslut
 cuntsucker
 cuntsuckers
 dafuck
-dammit
+dammit|dangit
 damned|danged
-damnit
+damnit|dangit
 damn|dang
 dickbag
 dickbeaters
@@ -219,9 +226,9 @@ dicklickers
 dicklicks
 dickmilk
 dickmonger
-dicks
 dickslap
 dicksucker
+dicks|jerks
 dickwad
 dickwads
 dickweasel
@@ -381,6 +388,7 @@ fucking
 fuckingbitch
 fuckingbitchs
 fuckings
+fuckink
 fuckinnuts
 fuckinright
 fuckinrights
@@ -447,6 +455,7 @@ gayfuckist
 gaylord
 gaytard
 gaywad
+getthefuckout
 God damn
 god damned
 god-damn
@@ -455,13 +464,16 @@ godammit
 goddam
 goddamit
 goddammed
-goddammit|gosh darnit
-goddamn
-goddamned|gosh darned
+goddammit|dangit
+Goddamn
+goddamned|danged
 goddamnes
-goddamnit|gosh darnit
+goddamnit
+goddamnit|dangit
 goddamnmuthafucker
 goddamn|gosh darn
+godshit
+godshits
 handjob
 handjobs
 hard on
@@ -509,6 +521,8 @@ mindfucking
 mindfuckings
 mindfucks
 minge
+monsterfucker
+monsterfuckers
 mothafuck
 mothafucka
 mothafuckah
@@ -598,6 +612,10 @@ queerbait
 queerhole
 ratfuck
 ratfucks
+ratshit
+ratshits
+richfuck
+richfucks
 rimjob
 rimjobs
 schlong
@@ -642,6 +660,7 @@ shitheads
 shithole
 shithouse
 shithouses
+shitless
 shitlicker
 shitlickers
 shitload
@@ -690,6 +709,7 @@ sweetfucker
 sweetfuckers
 tard
 testicle
+thefuck
 thundercunt
 tit
 titfuck
@@ -714,6 +734,7 @@ va-j-j
 vag
 vagina
 vjayjay
+wakethefuckup
 wank
 wanker
 wankers
@@ -726,3 +747,5 @@ whoreface
 whorefucker
 whorefuckers
 whore|harlot
+wormshit
+wormshits
