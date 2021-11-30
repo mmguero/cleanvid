@@ -17,7 +17,7 @@ RUN apk add --update --no-cache py3-pip ttf-liberation && \
     rm -f /tmp/requirements.txt
 
 COPY --from=mwader/static-ffmpeg:latest /ffmpeg /usr/local/bin/
-COPY --from=mwader/static-ffmpeg:latest /qt-faststart /usr/local/bin/
+COPY --from=mwader/static-ffmpeg:latest /ffprobe /usr/local/bin/
 
 ADD *.py /usr/local/bin/
 ADD swears.txt /usr/local/bin
