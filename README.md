@@ -1,5 +1,7 @@
 # cleanvid
 
+![Docker Image](https://github.com/mmguero/cleanvid/workflows/cleanvid-build-push-ghcr/badge.svg)
+
 cleanvid is a little script to mute profanity in video files in a few simple steps:
 
 1. The user provides as input a video file and matching .srt subtitle file. If subtitles are not provided, [`subliminal`](https://github.com/Diaoul/subliminal) is used to attempt to download the best matching .srt file.
