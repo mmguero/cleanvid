@@ -324,7 +324,7 @@ class VidCleaner(object):
         ffmpegCmd = (
             "ffmpeg -y -i \""
             + self.inputVidFileSpec
-            + "\" "
+            + "\" -sn "
             + videoArgs
             + audioArgs
             + f"{self.aParams} \""
