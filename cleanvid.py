@@ -21,6 +21,7 @@ __script_location__ = os.path.dirname(os.path.realpath(__file__))
 
 VIDEO_DEFAULT_PARAMS = '-c:v libx264 -preset slow -crf 22'
 AUDIO_DEFAULT_PARAMS = '-c:a aac -ac 2 -ab 224k -ar 44100'
+SUBTITLE_DEFAULT_LANG = 'eng'
 
 # thanks https://docs.python.org/3/library/itertools.html#recipes
 def pairwise(iterable):
@@ -126,16 +127,19 @@ class VidCleaner(object):
     outputVidFileSpec = ""
     swearsFileSpec = ""
     swearsPadMillisec = 0
+    embedSubs = False
     fullSubs = False
     subsOnly = False
     hardCode = False
     reEncode = False
+    subsLang = SUBTITLE_DEFAULT_LANG
     vParams = VIDEO_DEFAULT_PARAMS
     aParams = AUDIO_DEFAULT_PARAMS
     swearsMap = CaselessDictionary({})
     muteTimeList = []
 
     ######## init #################################################################
+
     def __init__(
         self,
         iVidFileSpec,
@@ -144,8 +148,10 @@ class VidCleaner(object):
         oSubsFileSpec,
         iSwearsFileSpec,
         swearsPadSec=0,
+        embedSubs=False,
         fullSubs=False,
         subsOnly=False,
+        subsLang=SUBTITLE_DEFAULT_LANG,
         reEncode=False,
         hardCode=False,
         vParams=VIDEO_DEFAULT_PARAMS,
@@ -176,10 +182,12 @@ class VidCleaner(object):
                 os.remove(self.cleanSubsFileSpec)
 
         self.swearsPadMillisec = swearsPadSec * 1000
+        self.embedSubs = embedSubs
         self.fullSubs = fullSubs
         self.subsOnly = subsOnly
         self.reEncode = reEncode
         self.hardCode = hardCode
+        self.subsLang = subsLang
         self.vParams = vParams
         self.aParams = aParams
         if self.vParams.startswith('base64:'):
@@ -321,10 +329,16 @@ class VidCleaner(object):
             audioArgs = " -af \"" + ",".join(self.muteTimeList) + "\" "
         else:
             audioArgs = " "
+        if self.embedSubs and os.path.isfile(self.cleanSubsFileSpec):
+            outFileParts = os.path.splitext(self.outputVidFileSpec)
+            subsArgs = f" -sn -i \"{self.cleanSubsFileSpec}\" -c:s {'mov_text' if outFileParts[1] == '.mp4' else 'srt'} -disposition:s:0 default -metadata:s:s:0 language={self.subsLang} "
+        else:
+            subsArgs = " -sn "
         ffmpegCmd = (
             "ffmpeg -y -i \""
             + self.inputVidFileSpec
-            + "\" -sn "
+            + "\""
+            + subsArgs
             + videoArgs
             + audioArgs
             + f"{self.aParams} \""
@@ -358,10 +372,21 @@ if __name__ == '__main__':
         metavar='<profanity file>',
     )
     parser.add_argument(
-        '-l', '--lang', help='language for srt download (default is "eng")', default='eng', metavar='<language>'
+        '-l',
+        '--lang',
+        help=f'language for srt download (default is "{SUBTITLE_DEFAULT_LANG}")',
+        default=SUBTITLE_DEFAULT_LANG,
+        metavar='<language>',
     )
     parser.add_argument(
         '-p', '--pad', help='pad (seconds) around profanity', metavar='<int>', dest="pad", type=int, default=0
+    )
+    parser.add_argument(
+        '-e',
+        '--embed-subs',
+        help='embed subtitles in resulting video file',
+        dest='embedSubs',
+        action='store_true',
     )
     parser.add_argument(
         '-f',
@@ -390,7 +415,7 @@ if __name__ == '__main__':
     parser.add_argument(
         '-a', '--audio-params', help='Audio parameters for ffmpeg', dest='aParams', default=AUDIO_DEFAULT_PARAMS
     )
-    parser.set_defaults(fullSubs=False)
+    parser.set_defaults(embedSubs=False, fullSubs=False, subsOnly=False, reEncode=False, hardCode=False)
     args = parser.parse_args()
 
     inFile = args.input
@@ -411,8 +436,10 @@ if __name__ == '__main__':
         args.subsOut,
         args.swears,
         args.pad,
+        args.embedSubs,
         args.fullSubs,
         args.subsOnly,
+        lang,
         args.reEncode,
         args.hardCode,
         args.vParams,
