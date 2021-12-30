@@ -63,7 +63,7 @@ def ExtractSubtitles(vidFileSpec, srtLanguage):
         )
     ):
         subFileParts = os.path.splitext(vidFileSpec)
-        subFileSpec = subFileParts[0] + "." + str(Language(srtLanguage)) + ".srt"
+        subFileSpec = subFileParts[0] + "." + srtLanguage + ".srt"
         ffmpegCmd = "ffmpeg -y -i \"" + vidFileSpec + f"\" -map 0:{streams[0]['index']} \"" + subFileSpec + "\""
         ffmpegResult = delegator.run(ffmpegCmd, block=True)
         if (ffmpegResult.return_code != 0) or (not os.path.isfile(subFileSpec)):
