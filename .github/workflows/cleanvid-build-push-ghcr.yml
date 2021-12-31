@@ -3,7 +3,7 @@ name: cleanvid-build-push-ghcr
 on:
   push:
     branches:
-      - 'master'
+      - 'main'
   workflow_dispatch:
   repository_dispatch:
 
