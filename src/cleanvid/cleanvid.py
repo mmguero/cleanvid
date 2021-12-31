@@ -14,7 +14,7 @@ import pysrt
 import delegator
 from subliminal import *
 from babelfish import Language
-from caselessdictionary import CaselessDictionary
+from cleanvid.caselessdictionary import CaselessDictionary
 from itertools import tee
 
 __script_location__ = os.path.dirname(os.path.realpath(__file__))
@@ -353,15 +353,12 @@ class VidCleaner(object):
 
 
 #################################################################################
-
-
-#################################################################################
-if __name__ == '__main__':
+def RunCleanvid():
     parser = argparse.ArgumentParser()
     parser.add_argument(
         '-s', '--subs', help='.srt subtitle file (will attempt auto-download if unspecified)', metavar='<srt>'
     )
-    parser.add_argument('-i', '--input', help='input video file', metavar='<input video>')
+    parser.add_argument('-i', '--input', required=True, help='input video file', metavar='<input video>')
     parser.add_argument('-o', '--output', help='output video file', metavar='<output video>')
     parser.add_argument('--subs-output', help='output subtitle file', metavar='<output srt>', dest="subsOut")
     parser.add_argument(
@@ -447,5 +444,10 @@ if __name__ == '__main__':
     )
     cleaner.CreateCleanSubAndMuteList()
     cleaner.MultiplexCleanVideo()
+
+
+#################################################################################
+if __name__ == '__main__':
+    RunCleanvid()
 
 #################################################################################

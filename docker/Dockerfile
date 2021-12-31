@@ -9,18 +9,15 @@ LABEL org.opencontainers.image.description='Dockerized cleanvid'
 
 ENV PYTHONUNBUFFERED 1
 
-ADD requirements.txt /tmp/requirements.txt
+ADD . /usr/local/src/cleanvid
 
 RUN apk add --update --no-cache py3-pip ttf-liberation && \
     python3 -m ensurepip && \
-    python3 -m pip install --no-cache --upgrade -r /tmp/requirements.txt && \
-    rm -f /tmp/requirements.txt
+    python3 -m pip install --no-cache /usr/local/src/cleanvid && \
+    rm -rf /usr/local/src/cleanvid
 
 COPY --from=mwader/static-ffmpeg:latest /ffmpeg /usr/local/bin/
 COPY --from=mwader/static-ffmpeg:latest /ffprobe /usr/local/bin/
 
-ADD *.py /usr/local/bin/
-ADD swears.txt /usr/local/bin
-
-ENTRYPOINT ["python3", "/usr/local/bin/cleanvid.py"]
+ENTRYPOINT ["cleanvid"]
 CMD []

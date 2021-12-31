@@ -1,4 +1,0 @@
-babelfish
-subliminal
-pysrt
-delegator.py
