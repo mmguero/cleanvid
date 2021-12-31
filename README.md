@@ -23,6 +23,7 @@ cleanvid is part of a family of projects with similar goals:
 
 * Python 3
 * [FFmpeg](https://www.ffmpeg.org)
+* [babelfish](https://github.com/Diaoul/babelfish)
 * [delegator.py](https://github.com/kennethreitz/delegator.py)
 * [pysrt](https://github.com/byroot/pysrt)
 * [subliminal](https://github.com/Diaoul/subliminal)
@@ -30,28 +31,40 @@ cleanvid is part of a family of projects with similar goals:
 ## usage
 
 ```
-$ ./cleanvid.py --help
-usage: cleanvid.py [-h] [-s <srt>] [-i <input video>] [-o <output video>]
-                   [-w <profanity file>] [-l <language>]
+usage: cleanvid [-h] [-s <srt>] -i <input video> [-o <output video>] [--subs-output <output srt>]
+                [-w <profanity file>] [-l <language>] [-p <int>] [-e] [-f] [--subs-only]
+                [-r] [-b] [-v VPARAMS] [-a APARAMS]
 
 optional arguments:
   -h, --help            show this help message and exit
   -s <srt>, --subs <srt>
-                        .srt subtitle file (will attempt auto-download if
-                        unspecified)
+                        .srt subtitle file (will attempt auto-download if unspecified)
   -i <input video>, --input <input video>
                         input video file
   -o <output video>, --output <output video>
                         output video file
+  --subs-output <output srt>
+                        output subtitle file
   -w <profanity file>, --swears <profanity file>
                         text file containing profanity (with optional mapping)
   -l <language>, --lang <language>
                         language for srt download (default is "eng")
+  -p <int>, --pad <int>
+                        pad (seconds) around profanity
+  -e, --embed-subs      embed subtitles in resulting video file
+  -f, --full-subs       include all subtitles in output subtitle file (not just scrubbed)
+  --subs-only           only operate on subtitles (do not alter audio)
+  -r, --re-encode       Re-encode video
+  -b, --burn            Hard-coded subtitles (implies re-encode)
+  -v VPARAMS, --video-params VPARAMS
+                        Video parameters for ffmpeg (only if re-encoding)
+  -a APARAMS, --audio-params APARAMS
+                        Audio parameters for ffmpeg
 ```
 
 ### Docker
 
-Alternately, a [Dockerfile](Dockerfile) is provided to allow you to run cleanvid in Docker. You can build the `mmguero/cleanvid:latest` Docker image with [`build_docker.sh`](build_docker.sh), then run [`cleanvid-docker.sh`](cleanvid-docker.sh) inside the directory where your video/subtitle files are located.
+Alternately, a [Dockerfile](Dockerfile) is provided to allow you to run cleanvid in Docker. You can build the `mmguero/cleanvid:latest` Docker image with [`build_docker.sh`](./docker/build_docker.sh), then run [`cleanvid-docker.sh`](./docker/cleanvid-docker.sh) inside the directory where your video/subtitle files are located.
 
 ## Contributing
 
