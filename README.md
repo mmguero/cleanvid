@@ -43,6 +43,8 @@ python3 -m pip install -U 'git+https://github.com/mmguero/cleanvid'
 * [pysrt](https://github.com/byroot/pysrt)
 * [subliminal](https://github.com/Diaoul/subliminal)
 
+To install FFmpeg, use your operating system's package manager or install binaries from [ffmpeg.org](https://www.ffmpeg.org/download.html). The Python dependencies will be installed automatically if you are using `pip` to install cleanvid.
+
 ## usage
 
 ```
