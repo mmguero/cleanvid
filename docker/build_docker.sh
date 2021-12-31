@@ -12,8 +12,8 @@ if ! (type "$REALPATH" && type "$DIRNAME" && type docker) > /dev/null; then
   echo "$(basename "${BASH_SOURCE[0]}") requires docker, $REALPATH and $DIRNAME"
   exit 1
 fi
-export PACKAGE_PATH="$($DIRNAME $($REALPATH -e "${BASH_SOURCE[0]}"))"
+export SCRIPT_PATH="$($DIRNAME $($REALPATH -e "${BASH_SOURCE[0]}"))"
 
-pushd "$PACKAGE_PATH"/.. >/dev/null 2>&1
+pushd "$SCRIPT_PATH"/.. >/dev/null 2>&1
 docker build -f docker/Dockerfile -t ghcr.io/mmguero/cleanvid:latest .
 popd >/dev/null 2>&1
