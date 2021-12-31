@@ -17,6 +17,21 @@ You can then use your favorite media player to play the cleaned video file toget
 * 🎤 [monkeyplug](https://github.com/mmguero/monkeyplug) for audio files
 * 📕 [montag](https://github.com/mmguero/montag) for ebooks
 
+## Installation
+
+Using `pip`, to install the latest [release from PyPI](https://pypi.org/project/cleanvid/):
+
+```
+python3 -m pip install -U cleanvid
+```
+
+Or to install directly from GitHub:
+
+
+```
+python3 -m pip install -U 'git+https://github.com/mmguero/cleanvid'
+```
+
 ## Prerequisites
 
 [cleanvid](./src/cleanvid/cleanvid.py) requires:
