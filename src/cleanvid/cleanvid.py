@@ -14,7 +14,11 @@ import pysrt
 import delegator
 from subliminal import *
 from babelfish import Language
-from cleanvid.caselessdictionary import CaselessDictionary
+
+try:
+    from cleanvid.caselessdictionary import CaselessDictionary
+except ImportError:
+    from caselessdictionary import CaselessDictionary
 from itertools import tee
 
 __script_location__ = os.path.dirname(os.path.realpath(__file__))
@@ -122,6 +126,7 @@ class VidCleaner(object):
     inputVidFileSpec = ""
     inputSubsFileSpec = ""
     cleanSubsFileSpec = ""
+    edlFileSpec = ""
     tmpSubsFileSpec = ""
     assSubsFileSpec = ""
     outputVidFileSpec = ""
@@ -130,8 +135,10 @@ class VidCleaner(object):
     embedSubs = False
     fullSubs = False
     subsOnly = False
+    edl = False
     hardCode = False
     reEncode = False
+    unalteredVideo = False
     subsLang = SUBTITLE_DEFAULT_LANG
     vParams = VIDEO_DEFAULT_PARAMS
     aParams = AUDIO_DEFAULT_PARAMS
@@ -151,6 +158,7 @@ class VidCleaner(object):
         embedSubs=False,
         fullSubs=False,
         subsOnly=False,
+        edl=False,
         subsLang=SUBTITLE_DEFAULT_LANG,
         reEncode=False,
         hardCode=False,
@@ -184,7 +192,8 @@ class VidCleaner(object):
         self.swearsPadMillisec = swearsPadSec * 1000
         self.embedSubs = embedSubs
         self.fullSubs = fullSubs
-        self.subsOnly = subsOnly
+        self.subsOnly = subsOnly or edl
+        self.edl = edl
         self.reEncode = reEncode
         self.hardCode = hardCode
         self.subsLang = subsLang
@@ -197,8 +206,11 @@ class VidCleaner(object):
 
     ######## del ##################################################################
     def __del__(self):
-        if os.path.isfile(self.cleanSubsFileSpec) and (not os.path.isfile(self.outputVidFileSpec)):
-            os.remove(self.cleanSubsFileSpec)
+        if (not os.path.isfile(self.outputVidFileSpec)) and (not self.unalteredVideo):
+            if os.path.isfile(self.cleanSubsFileSpec):
+                os.remove(self.cleanSubsFileSpec)
+            if os.path.isfile(self.edlFileSpec):
+                os.remove(self.edlFileSpec)
         if os.path.isfile(self.tmpSubsFileSpec):
             os.remove(self.tmpSubsFileSpec)
         if os.path.isfile(self.assSubsFileSpec):
@@ -214,6 +226,10 @@ class VidCleaner(object):
 
         if not self.cleanSubsFileSpec:
             self.cleanSubsFileSpec = subFileParts[0] + "_clean" + subFileParts[1]
+
+        if not self.edlFileSpec:
+            cleanSubFileParts = os.path.splitext(self.cleanSubsFileSpec)
+            self.edlFileSpec = cleanSubFileParts[0] + '.edl'
 
         lines = []
 
@@ -290,6 +306,7 @@ class VidCleaner(object):
         newSubs.save(self.cleanSubsFileSpec)
 
         self.muteTimeList = []
+        edlLines = []
         for timePair in newTimestampPairs:
             lineStart = (
                 (timePair[0].hour * 60.0 * 60.0)
@@ -306,50 +323,65 @@ class VidCleaner(object):
             self.muteTimeList.append(
                 "volume=enable='between(t," + format(lineStart, '.3f') + "," + format(lineEnd, '.3f') + ")':volume=0"
             )
+            if self.edl:
+                edlLines.append(f"{format(lineStart, '.1f')}\t{format(lineEnd, '.3f')}\t1")
+        if self.edl and (len(edlLines) > 0):
+            with open(self.edlFileSpec, 'w') as edlFile:
+                for item in edlLines:
+                    edlFile.write(f"{item}\n")
 
     ######## MultiplexCleanVideo ###################################################
     def MultiplexCleanVideo(self):
 
-        if self.reEncode or self.hardCode:
-            if self.hardCode and os.path.isfile(self.cleanSubsFileSpec):
-                self.assSubsFileSpec = self.cleanSubsFileSpec + '.ass'
-                subConvCmd = f"ffmpeg -y -i {self.cleanSubsFileSpec} {self.assSubsFileSpec}"
-                subConvResult = delegator.run(subConvCmd, block=True)
-                if (subConvResult.return_code == 0) and os.path.isfile(self.assSubsFileSpec):
-                    videoArgs = f"{self.vParams} -vf \"ass={self.assSubsFileSpec}\""
+        # if we're don't *have* to generate a new video file, don't
+        # we need to generate a video file if any of the following are true:
+        # - we were explicitly asked to re-encode
+        # - we are hard-coding (burning) subs
+        # - we are embedding a subtitle stream
+        # - we are not doing "subs only" or EDL mode and there more than zero mute sections
+        if self.reEncode or self.hardCode or self.embedSubs or ((not self.subsOnly) and (len(self.muteTimeList) > 0)):
+            if self.reEncode or self.hardCode:
+                if self.hardCode and os.path.isfile(self.cleanSubsFileSpec):
+                    self.assSubsFileSpec = self.cleanSubsFileSpec + '.ass'
+                    subConvCmd = f"ffmpeg -y -i {self.cleanSubsFileSpec} {self.assSubsFileSpec}"
+                    subConvResult = delegator.run(subConvCmd, block=True)
+                    if (subConvResult.return_code == 0) and os.path.isfile(self.assSubsFileSpec):
+                        videoArgs = f"{self.vParams} -vf \"ass={self.assSubsFileSpec}\""
+                    else:
+                        print(subConvCmd)
+                        print(subConvResult.err)
+                        raise ValueError(f'Could not process {self.cleanSubsFileSpec}')
                 else:
-                    print(subConvCmd)
-                    print(subConvResult.err)
-                    raise ValueError(f'Could not process {self.cleanSubsFileSpec}')
+                    videoArgs = self.vParams
             else:
-                videoArgs = self.vParams
+                videoArgs = "-c:v copy"
+            if (not self.subsOnly) and (len(self.muteTimeList) > 0):
+                audioArgs = " -af \"" + ",".join(self.muteTimeList) + "\" "
+            else:
+                audioArgs = " "
+            if self.embedSubs and os.path.isfile(self.cleanSubsFileSpec):
+                outFileParts = os.path.splitext(self.outputVidFileSpec)
+                subsArgs = f" -sn -i \"{self.cleanSubsFileSpec}\" -c:s {'mov_text' if outFileParts[1] == '.mp4' else 'srt'} -disposition:s:0 default -metadata:s:s:0 language={self.subsLang} "
+            else:
+                subsArgs = " -sn "
+            ffmpegCmd = (
+                "ffmpeg -y -i \""
+                + self.inputVidFileSpec
+                + "\""
+                + subsArgs
+                + videoArgs
+                + audioArgs
+                + f"{self.aParams} \""
+                + self.outputVidFileSpec
+                + "\""
+            )
+            ffmpegResult = delegator.run(ffmpegCmd, block=True)
+            if (ffmpegResult.return_code != 0) or (not os.path.isfile(self.outputVidFileSpec)):
+                print(ffmpegCmd)
+                print(ffmpegResult.err)
+                raise ValueError(f'Could not process {self.inputVidFileSpec}')
         else:
-            videoArgs = "-c:v copy"
-        if (not self.subsOnly) and (len(self.muteTimeList) > 0):
-            audioArgs = " -af \"" + ",".join(self.muteTimeList) + "\" "
-        else:
-            audioArgs = " "
-        if self.embedSubs and os.path.isfile(self.cleanSubsFileSpec):
-            outFileParts = os.path.splitext(self.outputVidFileSpec)
-            subsArgs = f" -sn -i \"{self.cleanSubsFileSpec}\" -c:s {'mov_text' if outFileParts[1] == '.mp4' else 'srt'} -disposition:s:0 default -metadata:s:s:0 language={self.subsLang} "
-        else:
-            subsArgs = " -sn "
-        ffmpegCmd = (
-            "ffmpeg -y -i \""
-            + self.inputVidFileSpec
-            + "\""
-            + subsArgs
-            + videoArgs
-            + audioArgs
-            + f"{self.aParams} \""
-            + self.outputVidFileSpec
-            + "\""
-        )
-        ffmpegResult = delegator.run(ffmpegCmd, block=True)
-        if (ffmpegResult.return_code != 0) or (not os.path.isfile(self.outputVidFileSpec)):
-            print(ffmpegCmd)
-            print(ffmpegResult.err)
-            raise ValueError(f'Could not process {self.inputVidFileSpec}')
+            self.unalteredVideo = True
 
 
 #################################################################################
@@ -398,6 +430,12 @@ def RunCleanvid():
         dest='subsOnly',
         action='store_true',
     )
+    parser.add_argument(
+        '--edl',
+        help='generate MPlayer EDL file with mute actions (also implies --subs-only)',
+        dest='edl',
+        action='store_true',
+    )
     parser.add_argument('-r', '--re-encode', help='Re-encode video', dest='reEncode', action='store_true')
     parser.add_argument(
         '-b', '--burn', help='Hard-coded subtitles (implies re-encode)', dest='hardCode', action='store_true'
@@ -412,7 +450,7 @@ def RunCleanvid():
     parser.add_argument(
         '-a', '--audio-params', help='Audio parameters for ffmpeg', dest='aParams', default=AUDIO_DEFAULT_PARAMS
     )
-    parser.set_defaults(embedSubs=False, fullSubs=False, subsOnly=False, reEncode=False, hardCode=False)
+    parser.set_defaults(embedSubs=False, fullSubs=False, subsOnly=False, reEncode=False, hardCode=False, edl=False)
     args = parser.parse_args()
 
     inFile = args.input
@@ -436,6 +474,7 @@ def RunCleanvid():
         args.embedSubs,
         args.fullSubs,
         args.subsOnly,
+        args.edl,
         lang,
         args.reEncode,
         args.hardCode,

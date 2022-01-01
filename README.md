@@ -48,11 +48,11 @@ To install FFmpeg, use your operating system's package manager or install binari
 ## usage
 
 ```
-usage: cleanvid [-h] [-s <srt>] -i <input video> [-o <output video>] [--subs-output <output srt>]
-                [-w <profanity file>] [-l <language>] [-p <int>] [-e] [-f] [--subs-only]
-                [-r] [-b] [-v VPARAMS] [-a APARAMS]
+usage: cleanvid.py [-h] [-s <srt>] -i <input video> [-o <output video>] [--subs-output <output srt>]
+                   [-w <profanity file>] [-l <language>] [-p <int>] [-e] [-f]
+                   [--subs-only] [--edl] [-r] [-b] [-v VPARAMS] [-a APARAMS]
 
-optional arguments:
+options:
   -h, --help            show this help message and exit
   -s <srt>, --subs <srt>
                         .srt subtitle file (will attempt auto-download if unspecified)
@@ -71,6 +71,7 @@ optional arguments:
   -e, --embed-subs      embed subtitles in resulting video file
   -f, --full-subs       include all subtitles in output subtitle file (not just scrubbed)
   --subs-only           only operate on subtitles (do not alter audio)
+  --edl                 generate MPlayer EDL file with mute actions (also implies --subs-only)
   -r, --re-encode       Re-encode video
   -b, --burn            Hard-coded subtitles (implies re-encode)
   -v VPARAMS, --video-params VPARAMS
