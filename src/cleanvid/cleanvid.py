@@ -77,19 +77,22 @@ def ExtractSubtitles(vidFileSpec, srtLanguage):
 
 
 ######## GetSubtitles #########################################################
-def GetSubtitles(vidFileSpec, srtLanguage):
+def GetSubtitles(vidFileSpec, srtLanguage, offline=False):
     subFileSpec = ExtractSubtitles(vidFileSpec, srtLanguage)
     if not os.path.isfile(subFileSpec):
-        if os.path.isfile(vidFileSpec):
-            subFileParts = os.path.splitext(vidFileSpec)
-            subFileSpec = subFileParts[0] + "." + str(Language(srtLanguage)) + ".srt"
-            if not os.path.isfile(subFileSpec):
-                video = Video.fromname(vidFileSpec)
-                bestSubtitles = download_best_subtitles([video], {Language(srtLanguage)})
-                savedSub = save_subtitles(video, [bestSubtitles[video][0]])
-
-        if subFileSpec and (not os.path.isfile(subFileSpec)):
+        if offline:
             subFileSpec = ""
+        else:
+            if os.path.isfile(vidFileSpec):
+                subFileParts = os.path.splitext(vidFileSpec)
+                subFileSpec = subFileParts[0] + "." + str(Language(srtLanguage)) + ".srt"
+                if not os.path.isfile(subFileSpec):
+                    video = Video.fromname(vidFileSpec)
+                    bestSubtitles = download_best_subtitles([video], {Language(srtLanguage)})
+                    savedSub = save_subtitles(video, [bestSubtitles[video][0]])
+
+            if subFileSpec and (not os.path.isfile(subFileSpec)):
+                subFileSpec = ""
 
     return subFileSpec
 
@@ -218,6 +221,13 @@ class VidCleaner(object):
 
     ######## CreateCleanSubAndMuteList #################################################
     def CreateCleanSubAndMuteList(self):
+        if (self.inputSubsFileSpec is None) or (not os.path.isfile(self.inputSubsFileSpec)):
+            raise IOError(
+                errno.ENOENT,
+                f"Input subtitle file unspecified or not found ({os.strerror(errno.ENOENT)})",
+                self.inputSubsFileSpec,
+            )
+
         subFileParts = os.path.splitext(self.inputSubsFileSpec)
 
         self.tmpSubsFileSpec = subFileParts[0] + "_utf8" + subFileParts[1]
@@ -388,7 +398,10 @@ class VidCleaner(object):
 def RunCleanvid():
     parser = argparse.ArgumentParser()
     parser.add_argument(
-        '-s', '--subs', help='.srt subtitle file (will attempt auto-download if unspecified)', metavar='<srt>'
+        '-s',
+        '--subs',
+        help='.srt subtitle file (will attempt auto-download if unspecified and not --offline)',
+        metavar='<srt>',
     )
     parser.add_argument('-i', '--input', required=True, help='input video file', metavar='<input video>')
     parser.add_argument('-o', '--output', help='output video file', metavar='<output video>')
@@ -431,6 +444,12 @@ def RunCleanvid():
         action='store_true',
     )
     parser.add_argument(
+        '--offline',
+        help="don't attempt to download subtitles",
+        dest='offline',
+        action='store_true',
+    )
+    parser.add_argument(
         '--edl',
         help='generate MPlayer EDL file with mute actions (also implies --subs-only)',
         dest='edl',
@@ -450,7 +469,15 @@ def RunCleanvid():
     parser.add_argument(
         '-a', '--audio-params', help='Audio parameters for ffmpeg', dest='aParams', default=AUDIO_DEFAULT_PARAMS
     )
-    parser.set_defaults(embedSubs=False, fullSubs=False, subsOnly=False, reEncode=False, hardCode=False, edl=False)
+    parser.set_defaults(
+        embedSubs=False,
+        fullSubs=False,
+        subsOnly=False,
+        offline=False,
+        reEncode=False,
+        hardCode=False,
+        edl=False,
+    )
     args = parser.parse_args()
 
     inFile = args.input
@@ -462,7 +489,7 @@ def RunCleanvid():
         if not outFile:
             outFile = inFileParts[0] + "_clean" + inFileParts[1]
         if not subsFile:
-            subsFile = GetSubtitles(inFile, lang)
+            subsFile = GetSubtitles(inFile, lang, args.offline)
 
     cleaner = VidCleaner(
         inFile,
