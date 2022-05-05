@@ -71,6 +71,7 @@ options:
   -e, --embed-subs      embed subtitles in resulting video file
   -f, --full-subs       include all subtitles in output subtitle file (not just scrubbed)
   --subs-only           only operate on subtitles (do not alter audio)
+  --offline             don't attempt to download subtitles
   --edl                 generate MPlayer EDL file with mute actions (also implies --subs-only)
   -r, --re-encode       Re-encode video
   -b, --burn            Hard-coded subtitles (implies re-encode)
