@@ -10,9 +10,13 @@ on:
 env:
   REGISTRY: ghcr.io
   IMAGE_NAME: ghcr.io/${{ github.repository_owner }}/cleanvid
+  IMAGE_TAG: latest
+  IMAGE_PLATFORM: linux/amd64
+  REPO_CONTEXT: .
+  REPO_CONTAINERFILE: ./docker/Dockerfile
 
 jobs:
-  docker:
+  buildah:
     runs-on: ubuntu-latest
     permissions:
       actions: write
@@ -21,6 +25,7 @@ jobs:
     steps:
       -
         name: Cancel previous run in progress
+        id: cancel-previous-runs
         uses: styfle/cancel-workflow-action@0.9.1
         with:
           ignore_sha: true
@@ -28,9 +33,15 @@ jobs:
           access_token: ${{ secrets.GITHUB_TOKEN }}
       -
         name: Checkout
+        id: repo-checkout
         uses: actions/checkout@v2
       -
+        name: Set up QEMU
+        id: setup-qemu
+        uses: docker/setup-qemu-action@v2
+      -
         name: Log in to registry
+        id: registry-login
         uses: redhat-actions/podman-login@v1
         with:
           registry: ${{ env.REGISTRY }}
@@ -42,13 +53,15 @@ jobs:
         uses: redhat-actions/buildah-build@v2
         with:
           image: ${{ env.IMAGE_NAME }}
-          tags: latest
-          context: .
+          tags: ${{ env.IMAGE_TAG }}
+          context: ${{ env.REPO_CONTEXT }}
           containerfiles: |
-            ./docker/Dockerfile
+            ${{ env.REPO_CONTAINERFILE }}
+          platforms: |
+            ${{ env.IMAGE_PLATFORM }}
       -
         name: Push
-        id: push-base-to-ghcr
+        id: push-to-ghcr
         uses: redhat-actions/push-to-registry@v2
         with:
           image: ${{ steps.build-image.outputs.image }}
