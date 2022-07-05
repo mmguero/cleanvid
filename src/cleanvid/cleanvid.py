@@ -26,6 +26,7 @@ __script_location__ = os.path.dirname(os.path.realpath(__file__))
 VIDEO_DEFAULT_PARAMS = '-c:v libx264 -preset slow -crf 22'
 AUDIO_DEFAULT_PARAMS = '-c:a aac -ac 2 -ab 224k -ar 44100'
 SUBTITLE_DEFAULT_LANG = 'eng'
+PLEX_AUTO_SKIP_DEFAULT_CONFIG = '{"markers":{},"offsets":{},"tags":{},"allowed":{"users":[],"clients":[],"keys":[]},"blocked":{"users":[],"clients":[],"keys":[]},"clients":{},"mode":{}}'
 
 # thanks https://docs.python.org/3/library/itertools.html#recipes
 def pairwise(iterable):
@@ -145,6 +146,8 @@ class VidCleaner(object):
     subsLang = SUBTITLE_DEFAULT_LANG
     vParams = VIDEO_DEFAULT_PARAMS
     aParams = AUDIO_DEFAULT_PARAMS
+    plexAutoSkipJson = ""
+    plexAutoSkipId = ""
     swearsMap = CaselessDictionary({})
     muteTimeList = []
 
@@ -167,6 +170,8 @@ class VidCleaner(object):
         hardCode=False,
         vParams=VIDEO_DEFAULT_PARAMS,
         aParams=AUDIO_DEFAULT_PARAMS,
+        plexAutoSkipJson="",
+        plexAutoSkipId="",
     ):
 
         if (iVidFileSpec is not None) and os.path.isfile(iVidFileSpec):
@@ -195,8 +200,10 @@ class VidCleaner(object):
         self.swearsPadMillisec = swearsPadSec * 1000
         self.embedSubs = embedSubs
         self.fullSubs = fullSubs
-        self.subsOnly = subsOnly or edl
+        self.subsOnly = subsOnly or edl or (plexAutoSkipJson and plexAutoSkipId)
         self.edl = edl
+        self.plexAutoSkipJson = plexAutoSkipJson
+        self.plexAutoSkipId = plexAutoSkipId
         self.reEncode = reEncode
         self.hardCode = hardCode
         self.subsLang = subsLang
@@ -317,6 +324,12 @@ class VidCleaner(object):
 
         self.muteTimeList = []
         edlLines = []
+        plexDict = json.loads(PLEX_AUTO_SKIP_DEFAULT_CONFIG) if self.plexAutoSkipId and self.plexAutoSkipJson else None
+
+        if plexDict:
+            plexDict["markers"][self.plexAutoSkipId] = []
+            plexDict["mode"][self.plexAutoSkipId] = "volume"
+
         for timePair in newTimestampPairs:
             lineStart = (
                 (timePair[0].hour * 60.0 * 60.0)
@@ -335,10 +348,20 @@ class VidCleaner(object):
             )
             if self.edl:
                 edlLines.append(f"{format(lineStart, '.1f')}\t{format(lineEnd, '.3f')}\t1")
+            if plexDict:
+                plexDict["markers"][self.plexAutoSkipId].append(
+                    {"start": round(lineStart * 1000.0), "end": round(lineEnd * 1000.0)}
+                )
         if self.edl and (len(edlLines) > 0):
             with open(self.edlFileSpec, 'w') as edlFile:
                 for item in edlLines:
                     edlFile.write(f"{item}\n")
+        if plexDict and (len(plexDict["markers"][self.plexAutoSkipId]) > 0):
+            json.dump(
+                plexDict,
+                open(self.plexAutoSkipJson, 'w'),
+                indent=4,
+            )
 
     ######## MultiplexCleanVideo ###################################################
     def MultiplexCleanVideo(self):
@@ -405,6 +428,18 @@ def RunCleanvid():
     )
     parser.add_argument('-i', '--input', required=True, help='input video file', metavar='<input video>')
     parser.add_argument('-o', '--output', help='output video file', metavar='<output video>')
+    parser.add_argument(
+        '--plex-auto-skip-json',
+        help='custom JSON file for PlexAutoSkip (also implies --subs-only)',
+        metavar='<output JSON>',
+        dest="plexAutoSkipJson",
+    )
+    parser.add_argument(
+        '--plex-auto-skip-id',
+        help='content identifier for PlexAutoSkip (also implies --subs-only)',
+        metavar='<content identifier>',
+        dest="plexAutoSkipId",
+    )
     parser.add_argument('--subs-output', help='output subtitle file', metavar='<output srt>', dest="subsOut")
     parser.add_argument(
         '-w',
@@ -484,12 +519,20 @@ def RunCleanvid():
     outFile = args.output
     subsFile = args.subs
     lang = args.lang
+    plexFile = args.plexAutoSkipJson
     if inFile:
         inFileParts = os.path.splitext(inFile)
         if not outFile:
             outFile = inFileParts[0] + "_clean" + inFileParts[1]
         if not subsFile:
             subsFile = GetSubtitles(inFile, lang, args.offline)
+        if args.plexAutoSkipId and not plexFile:
+            plexFile = inFileParts[0] + "_PlexAutoSkip_clean.json"
+
+    if plexFile and not args.plexAutoSkipId:
+        raise ValueError(
+            f'Content ID must be specified if creating a PlexAutoSkip JSON file (https://github.com/mdhiggins/PlexAutoSkip/wiki/Identifiers)'
+        )
 
     cleaner = VidCleaner(
         inFile,
@@ -507,6 +550,8 @@ def RunCleanvid():
         args.hardCode,
         args.vParams,
         args.aParams,
+        plexFile,
+        args.plexAutoSkipId,
     )
     cleaner.CreateCleanSubAndMuteList()
     cleaner.MultiplexCleanVideo()
