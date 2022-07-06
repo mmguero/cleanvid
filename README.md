@@ -11,6 +11,8 @@
 
 You can then use your favorite media player to play the cleaned video file together with the cleaned subtitles.
 
+As an alternative to creating a new video file, cleanvid can create a simple EDL file (see the [mplayer](http://www.mplayerhq.hu/DOCS/HTML/en/edl.html) or KODI [documentation](https://kodi.wiki/view/Edit_decision_list)) or a custom JSON definition file for [PlexAutoSkip](https://github.com/mdhiggins/PlexAutoSkip).
+
 **cleanvid** is part of a family of projects with similar goals:
 
 * 📼 [cleanvid](https://github.com/mmguero/cleanvid) for video files
@@ -48,18 +50,23 @@ To install FFmpeg, use your operating system's package manager or install binari
 ## usage
 
 ```
-usage: cleanvid.py [-h] [-s <srt>] -i <input video> [-o <output video>] [--subs-output <output srt>]
-                   [-w <profanity file>] [-l <language>] [-p <int>] [-e] [-f]
-                   [--subs-only] [--edl] [-r] [-b] [-v VPARAMS] [-a APARAMS]
+usage: cleanvid.py [-h] [-s <srt>] -i <input video> [-o <output video>] 
+                   [--plex-auto-skip-json <output JSON>] [--plex-auto-skip-id <content identifier>]
+                   [--subs-output <output srt>] [-w <profanity file>] [-l <language>] [-p <int>] [-e] [-f] [--subs-only] [--offline] [--edl] [-r] [-b]
+                   [-v VPARAMS] [-a APARAMS]
 
 options:
   -h, --help            show this help message and exit
   -s <srt>, --subs <srt>
-                        .srt subtitle file (will attempt auto-download if unspecified)
+                        .srt subtitle file (will attempt auto-download if unspecified and not --offline)
   -i <input video>, --input <input video>
                         input video file
   -o <output video>, --output <output video>
                         output video file
+  --plex-auto-skip-json <output JSON>
+                        custom JSON file for PlexAutoSkip (also implies --subs-only)
+  --plex-auto-skip-id <content identifier>
+                        content identifier for PlexAutoSkip (also implies --subs-only)
   --subs-output <output srt>
                         output subtitle file
   -w <profanity file>, --swears <profanity file>
