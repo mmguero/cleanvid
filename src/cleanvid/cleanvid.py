@@ -350,7 +350,7 @@ class VidCleaner(object):
                 edlLines.append(f"{format(lineStart, '.1f')}\t{format(lineEnd, '.3f')}\t1")
             if plexDict:
                 plexDict["markers"][self.plexAutoSkipId].append(
-                    {"start": round(lineStart * 1000.0), "end": round(lineEnd * 1000.0)}
+                    {"start": round(lineStart * 1000.0), "end": round(lineEnd * 1000.0), "mode": "volume"}
                 )
         if self.edl and (len(edlLines) > 0):
             with open(self.edlFileSpec, 'w') as edlFile:
