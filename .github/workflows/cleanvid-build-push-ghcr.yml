@@ -5,13 +5,7 @@ on:
   push:
     branches:
       - 'main'
-    paths:
-      - 'cleanvid/**'
-      - '.github/workflows/cleanvid-build-push-ghcr.yml'
   pull_request:
-    paths:
-      - 'cleanvid/**'
-      - '.github/workflows/cleanvid-build-push-ghcr.yml'
   workflow_dispatch:
   repository_dispatch:
   schedule:
