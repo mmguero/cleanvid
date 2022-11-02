@@ -1,69 +1,43 @@
+---
 name: cleanvid-build-push-ghcr
 
 on:
   push:
     branches:
       - 'main'
+    paths:
+      - 'cleanvid/**'
+      - '.github/workflows/cleanvid-build-push-ghcr.yml'
+  pull_request:
+    paths:
+      - 'cleanvid/**'
+      - '.github/workflows/cleanvid-build-push-ghcr.yml'
   workflow_dispatch:
   repository_dispatch:
-
-env:
-  REGISTRY: ghcr.io
-  IMAGE_NAME: ghcr.io/${{ github.repository_owner }}/cleanvid
-  IMAGE_TAG: latest
-  IMAGE_PLATFORM: linux/amd64
-  REPO_CONTEXT: .
-  REPO_CONTAINERFILE: ./docker/Dockerfile
+  schedule:
+    - cron: '0 12 15 * *'
 
 jobs:
-  buildah:
-    runs-on: ubuntu-latest
+  build-image:
+    name: Call Docker Build
+    uses: mmguero-dev/docker-build-workflow/.github/workflows/reusable-docker-build.yaml@main
     permissions:
+      contents: read
       actions: write
       packages: write
-      contents: read
-    steps:
-      -
-        name: Cancel previous run in progress
-        id: cancel-previous-runs
-        uses: styfle/cancel-workflow-action@0.11.0
-        with:
-          ignore_sha: true
-          all_but_latest: true
-          access_token: ${{ secrets.GITHUB_TOKEN }}
-      -
-        name: Checkout
-        id: repo-checkout
-        uses: actions/checkout@v3
-      -
-        name: Set up QEMU
-        id: setup-qemu
-        uses: docker/setup-qemu-action@v2
-      -
-        name: Log in to registry
-        id: registry-login
-        uses: redhat-actions/podman-login@v1
-        with:
-          registry: ${{ env.REGISTRY }}
-          username: ${{ github.repository_owner }}
-          password: ${{ secrets.GITHUB_TOKEN }}
-      -
-        name: Build
-        id: build-image
-        uses: redhat-actions/buildah-build@v2
-        with:
-          image: ${{ env.IMAGE_NAME }}
-          tags: ${{ env.IMAGE_TAG }}
-          context: ${{ env.REPO_CONTEXT }}
-          containerfiles: |
-            ${{ env.REPO_CONTAINERFILE }}
-          platforms: |
-            ${{ env.IMAGE_PLATFORM }}
-      -
-        name: Push
-        id: push-to-ghcr
-        uses: redhat-actions/push-to-registry@v2
-        with:
-          image: ${{ steps.build-image.outputs.image }}
-          tags: ${{ steps.build-image.outputs.tags }}
-          registry: ${{ env.REGISTRY }}
+      pull-requests: write
+    with:
+      context: .
+      file: ./docker/Dockerfile
+      cancel-previous-runs: true
+      dockerhub-enable: false
+      ghcr-enable: true
+      image-names: |
+        ghcr.io/${{ github.repository_owner }}/cleanvid
+      tag-rules: |
+        type=raw,value=latest,enable={{is_default_branch}}
+        type=raw,value=stable-{{date 'YYYYMMDDHHmmss'}},enable={{is_default_branch}}
+        type=ref,event=pr
+        type=ref,event=branch
+        type=raw,value=gha-${{ github.run_id }}
+      platforms: linux/amd64,linux/arm64,linux/arm/v7
