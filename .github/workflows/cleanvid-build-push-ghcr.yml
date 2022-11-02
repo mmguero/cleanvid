@@ -34,4 +34,4 @@ jobs:
         type=ref,event=pr
         type=ref,event=branch
         type=raw,value=gha-${{ github.run_id }}
-      platforms: linux/amd64,linux/arm64,linux/arm/v7
+      platforms: linux/amd64
