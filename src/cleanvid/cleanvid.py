@@ -456,7 +456,7 @@ def RunCleanvid():
         metavar='<language>',
     )
     parser.add_argument(
-        '-p', '--pad', help='pad (seconds) around profanity', metavar='<int>', dest="pad", type=int, default=0
+        '-p', '--pad', help='pad (seconds) around profanity', metavar='<int>', dest="pad", type=int, default=1
     )
     parser.add_argument(
         '-e',
