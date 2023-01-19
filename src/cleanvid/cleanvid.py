@@ -24,7 +24,9 @@ from itertools import tee
 __script_location__ = os.path.dirname(os.path.realpath(__file__))
 
 VIDEO_DEFAULT_PARAMS = '-c:v libx264 -preset slow -crf 22'
-AUDIO_DEFAULT_PARAMS = '-c:a aac -ac 2 -ab 224k -ar 44100'
+AUDIO_DEFAULT_PARAMS = '-c:a aac -ab 224k -ar 44100'
+# for downmixing, https://superuser.com/questions/852400 was helpful
+AUDIO_DOWNMIX_FILTER = 'pan=stereo|FL=0.8*FC + 0.6*FL + 0.6*BL + 0.5*LFE|FR=0.8*FC + 0.6*FR + 0.6*BR + 0.5*LFE'
 SUBTITLE_DEFAULT_LANG = 'eng'
 PLEX_AUTO_SKIP_DEFAULT_CONFIG = '{"markers":{},"offsets":{},"tags":{},"allowed":{"users":[],"clients":[],"keys":[]},"blocked":{"users":[],"clients":[],"keys":[]},"clients":{},"mode":{}}'
 
@@ -146,6 +148,7 @@ class VidCleaner(object):
     subsLang = SUBTITLE_DEFAULT_LANG
     vParams = VIDEO_DEFAULT_PARAMS
     aParams = AUDIO_DEFAULT_PARAMS
+    aDownmix = False
     plexAutoSkipJson = ""
     plexAutoSkipId = ""
     swearsMap = CaselessDictionary({})
@@ -170,6 +173,7 @@ class VidCleaner(object):
         hardCode=False,
         vParams=VIDEO_DEFAULT_PARAMS,
         aParams=AUDIO_DEFAULT_PARAMS,
+        aDownmix = False,
         plexAutoSkipJson="",
         plexAutoSkipId="",
     ):
@@ -209,6 +213,7 @@ class VidCleaner(object):
         self.subsLang = subsLang
         self.vParams = vParams
         self.aParams = aParams
+        self.aDownmix = aDownmix
         if self.vParams.startswith('base64:'):
             self.vParams = base64.b64decode(self.vParams[7:]).decode('utf-8')
         if self.aParams.startswith('base64:'):
@@ -388,10 +393,12 @@ class VidCleaner(object):
                     videoArgs = self.vParams
             else:
                 videoArgs = "-c:v copy"
+            if self.aDownmix:
+                self.muteTimeList.insert(0, AUDIO_DOWNMIX_FILTER)
             if (not self.subsOnly) and (len(self.muteTimeList) > 0):
-                audioArgs = " -af \"" + ",".join(self.muteTimeList) + "\" "
+                audioFilter = " -af \"" + ",".join(self.muteTimeList) + "\" "
             else:
-                audioArgs = " "
+                audioFilter = " "
             if self.embedSubs and os.path.isfile(self.cleanSubsFileSpec):
                 outFileParts = os.path.splitext(self.outputVidFileSpec)
                 subsArgs = f" -i \"{self.cleanSubsFileSpec}\" -map 0 -map -0:s -map 1 -c:s {'mov_text' if outFileParts[1] == '.mp4' else 'srt'} -disposition:s:0 default -metadata:s:s:0 language={self.subsLang} "
@@ -403,7 +410,7 @@ class VidCleaner(object):
                 + "\""
                 + subsArgs
                 + videoArgs
-                + audioArgs
+                + audioFilter
                 + f"{self.aParams} \""
                 + self.outputVidFileSpec
                 + "\""
@@ -504,6 +511,9 @@ def RunCleanvid():
     parser.add_argument(
         '-a', '--audio-params', help='Audio parameters for ffmpeg', dest='aParams', default=AUDIO_DEFAULT_PARAMS
     )
+    parser.add_argument(
+        '-d', '--downmix', help='Downmix to stereo', dest='aDownmix', action='store_true'
+    )
     parser.set_defaults(
         embedSubs=False,
         fullSubs=False,
@@ -550,6 +560,7 @@ def RunCleanvid():
         args.hardCode,
         args.vParams,
         args.aParams,
+        args.aDownmix,
         plexFile,
         args.plexAutoSkipId,
     )
