@@ -12,6 +12,7 @@ import sys
 import re
 import pysrt
 import delegator
+from datetime import datetime
 from subliminal import *
 from babelfish import Language
 
@@ -133,6 +134,7 @@ class VidCleaner(object):
     inputSubsFileSpec = ""
     cleanSubsFileSpec = ""
     edlFileSpec = ""
+    jsonFileSpec = ""
     tmpSubsFileSpec = ""
     assSubsFileSpec = ""
     outputVidFileSpec = ""
@@ -153,6 +155,7 @@ class VidCleaner(object):
     plexAutoSkipId = ""
     swearsMap = CaselessDictionary({})
     muteTimeList = []
+    jsonDumpList = None
 
     ######## init #################################################################
 
@@ -168,12 +171,13 @@ class VidCleaner(object):
         fullSubs=False,
         subsOnly=False,
         edl=False,
+        jsonDump=False,
         subsLang=SUBTITLE_DEFAULT_LANG,
         reEncode=False,
         hardCode=False,
         vParams=VIDEO_DEFAULT_PARAMS,
         aParams=AUDIO_DEFAULT_PARAMS,
-        aDownmix = False,
+        aDownmix=False,
         plexAutoSkipJson="",
         plexAutoSkipId="",
     ):
@@ -206,6 +210,7 @@ class VidCleaner(object):
         self.fullSubs = fullSubs
         self.subsOnly = subsOnly or edl or (plexAutoSkipJson and plexAutoSkipId)
         self.edl = edl
+        self.jsonDumpList = [] if jsonDump else None
         self.plexAutoSkipJson = plexAutoSkipJson
         self.plexAutoSkipId = plexAutoSkipId
         self.reEncode = reEncode
@@ -226,6 +231,8 @@ class VidCleaner(object):
                 os.remove(self.cleanSubsFileSpec)
             if os.path.isfile(self.edlFileSpec):
                 os.remove(self.edlFileSpec)
+            if os.path.isfile(self.jsonFileSpec):
+                os.remove(self.jsonFileSpec)
         if os.path.isfile(self.tmpSubsFileSpec):
             os.remove(self.tmpSubsFileSpec)
         if os.path.isfile(self.assSubsFileSpec):
@@ -252,6 +259,10 @@ class VidCleaner(object):
         if not self.edlFileSpec:
             cleanSubFileParts = os.path.splitext(self.cleanSubsFileSpec)
             self.edlFileSpec = cleanSubFileParts[0] + '.edl'
+
+        if (self.jsonDumpList is not None) and (not self.jsonFileSpec):
+            cleanSubFileParts = os.path.splitext(self.cleanSubsFileSpec)
+            self.jsonFileSpec = cleanSubFileParts[0] + '.json'
 
         lines = []
 
@@ -306,7 +317,17 @@ class VidCleaner(object):
                     )
                 )
             ):
+
                 subScrubbed = newText != sub.text
+                if subScrubbed and (self.jsonDumpList is not None):
+                    self.jsonDumpList.append(
+                        {
+                            'old': sub.text,
+                            'new': newText,
+                            'start': str(sub.start),
+                            'end': str(sub.end),
+                        }
+                    )
                 newSub = sub
                 newSub.text = newText
                 newSubs.append(newSub)
@@ -326,6 +347,26 @@ class VidCleaner(object):
                 prevNaughtySub = None
 
         newSubs.save(self.cleanSubsFileSpec)
+        if self.jsonDumpList is not None:
+            with open(self.jsonFileSpec, "w") as f:
+                f.write(
+                    json.dumps(
+                        {
+                            "now": datetime.now().isoformat(),
+                            "edits": self.jsonDumpList,
+                            "media": {
+                                "input": self.inputVidFileSpec,
+                                "output": self.outputVidFileSpec,
+                                "ffprobe": GetFormatAndStreamInfo(self.inputVidFileSpec),
+                            },
+                            "subtitles": {
+                                "input": self.inputSubsFileSpec,
+                                "output": self.cleanSubsFileSpec,
+                            },
+                        },
+                        indent=4,
+                    )
+                )
 
         self.muteTimeList = []
         edlLines = []
@@ -497,6 +538,12 @@ def RunCleanvid():
         dest='edl',
         action='store_true',
     )
+    parser.add_argument(
+        '--json',
+        help='generate JSON file with muted subtitles and their contents',
+        dest='json',
+        action='store_true',
+    )
     parser.add_argument('-r', '--re-encode', help='Re-encode video', dest='reEncode', action='store_true')
     parser.add_argument(
         '-b', '--burn', help='Hard-coded subtitles (implies re-encode)', dest='hardCode', action='store_true'
@@ -511,9 +558,7 @@ def RunCleanvid():
     parser.add_argument(
         '-a', '--audio-params', help='Audio parameters for ffmpeg', dest='aParams', default=AUDIO_DEFAULT_PARAMS
     )
-    parser.add_argument(
-        '-d', '--downmix', help='Downmix to stereo', dest='aDownmix', action='store_true'
-    )
+    parser.add_argument('-d', '--downmix', help='Downmix to stereo', dest='aDownmix', action='store_true')
     parser.set_defaults(
         embedSubs=False,
         fullSubs=False,
@@ -555,6 +600,7 @@ def RunCleanvid():
         args.fullSubs,
         args.subsOnly,
         args.edl,
+        args.json,
         lang,
         args.reEncode,
         args.hardCode,
