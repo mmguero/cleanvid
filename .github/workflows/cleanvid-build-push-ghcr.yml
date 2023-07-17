@@ -11,27 +11,82 @@ on:
   schedule:
     - cron: '0 12 15 * *'
 
+env:
+  REGISTRY: ghcr.io
+  IMAGE_NAME: ghcr.io/${{ github.repository_owner }}/cleanvid
+  IMAGE_TAG: latest
+  IMAGE_ARCH: amd64
+  REPO_CONTEXT: .
+  REPO_CONTAINERFILE: ./docker/Dockerfile
+
 jobs:
-  build-image:
-    name: Call Docker Build
-    uses: mmguero-dev/docker-build-workflow/.github/workflows/reusable-docker-build.yaml@main
+  buildah:
+    runs-on: ubuntu-latest
     permissions:
-      contents: read
       actions: write
       packages: write
-      pull-requests: write
-    with:
-      context: .
-      file: ./docker/Dockerfile
-      cancel-previous-runs: true
-      dockerhub-enable: false
-      ghcr-enable: true
-      image-names: |
-        ghcr.io/${{ github.repository_owner }}/cleanvid
-      tag-rules: |
-        type=raw,value=latest,enable={{is_default_branch}}
-        type=raw,value=stable-{{date 'YYYYMMDDHHmmss'}},enable={{is_default_branch}}
-        type=ref,event=pr
-        type=ref,event=branch
-        type=raw,value=gha-${{ github.run_id }}
-      platforms: linux/amd64,linux/arm64
+      contents: read
+      security-events: write
+    steps:
+      -
+        name: Cancel previous run in progress
+        id: cancel-previous-runs
+        uses: styfle/cancel-workflow-action@0.11.0
+        with:
+          ignore_sha: true
+          all_but_latest: true
+          access_token: ${{ secrets.GITHUB_TOKEN }}
+      -
+        name: Checkout
+        id: repo-checkout
+        uses: actions/checkout@v3
+      -
+        name: Set up QEMU
+        id: setup-qemu
+        uses: docker/setup-qemu-action@v2
+      -
+        name: Log in to registry
+        id: registry-login
+        uses: redhat-actions/podman-login@v1
+        with:
+          registry: ${{ env.REGISTRY }}
+          username: ${{ github.repository_owner }}
+          password: ${{ secrets.GITHUB_TOKEN }}
+      -
+        name: Build
+        id: build-image
+        uses: redhat-actions/buildah-build@v2
+        with:
+          image: ${{ env.IMAGE_NAME }}
+          tags: ${{ env.IMAGE_TAG }}
+          context: ${{ env.REPO_CONTEXT }}
+          containerfiles: ${{ env.REPO_CONTAINERFILE }}
+          archs: ${{ env.IMAGE_ARCH }}
+      -
+        name: Run Trivy vulnerability scanner
+        id: trivy-scan
+        uses: aquasecurity/trivy-action@master
+        with:
+          scan-type: 'image'
+          image-ref: ${{ env.REGISTRY }}/${{ env.IMAGE_NAME }}:${{ env.IMAGE_TAG }}
+          format: 'sarif'
+          output: 'trivy-results.sarif'
+          severity: 'HIGH,CRITICAL'
+          vuln-type: 'os,library'
+          hide-progress: true
+          ignore-unfixed: true
+          exit-code: '0'
+      -
+        name: Upload Trivy scan results to GitHub Security tab
+        uses: github/codeql-action/upload-sarif@v2
+        if: always()
+        with:
+          sarif_file: 'trivy-results.sarif'
+      -
+        name: Push
+        id: push-to-ghcr
+        uses: redhat-actions/push-to-registry@v2
+        with:
+          image: ${{ steps.build-image.outputs.image }}
+          tags: ${{ steps.build-image.outputs.tags }}
+          registry: ${{ env.REGISTRY }}
