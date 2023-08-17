@@ -428,7 +428,7 @@ class VidCleaner(object):
             plexDict["markers"][self.plexAutoSkipId] = []
             plexDict["mode"][self.plexAutoSkipId] = "volume"
 
-        for timePair in newTimestampPairs:
+        for timePair, timePairPeek in pairwise(newTimestampPairs):
             lineStart = (
                 (timePair[0].hour * 60.0 * 60.0)
                 + (timePair[0].minute * 60.0)
@@ -440,6 +440,30 @@ class VidCleaner(object):
                 + (timePair[1].minute * 60.0)
                 + timePair[1].second
                 + (timePair[1].microsecond / 1000000.0)
+            )
+            lineStartPeek = (
+                (timePairPeek[0].hour * 60.0 * 60.0)
+                + (timePairPeek[0].minute * 60.0)
+                + timePairPeek[0].second
+                + (timePairPeek[0].microsecond / 1000000.0)
+            )
+            self.muteTimeList.append(
+                "afade=enable='between(t,"
+                + format(lineStart, '.3f')
+                + ","
+                + format(lineEnd, '.3f')
+                + ")':t=out:st="
+                + format(lineStart, '.3f')
+                + ":d=30ms"
+            )
+            self.muteTimeList.append(
+                "afade=enable='between(t,"
+                + format(lineEnd, '.3f')
+                + ","
+                + format(lineStartPeek, '.3f')
+                + ")':t=in:st="
+                + format(lineEnd, '.3f')
+                + ":d=10ms"
             )
             self.muteTimeList.append(
                 "volume=enable='between(t," + format(lineStart, '.3f') + "," + format(lineEnd, '.3f') + ")':volume=0"
