@@ -44,7 +44,7 @@ def pairwise(iterable):
 def GetFormatAndStreamInfo(vidFileSpec):
     result = None
     if os.path.isfile(vidFileSpec):
-        ffprobeCmd = "ffprobe -v quiet -print_format json -show_format -show_streams \"" + vidFileSpec + "\""
+        ffprobeCmd = "ffprobe -loglevel quiet -print_format json -show_format -show_streams \"" + vidFileSpec + "\""
         ffprobeResult = delegator.run(ffprobeCmd, block=True)
         if ffprobeResult.return_code == 0:
             result = json.loads(ffprobeResult.out)
@@ -56,7 +56,7 @@ def GetStreamSubtitleMap(vidFileSpec):
     result = None
     if os.path.isfile(vidFileSpec):
         ffprobeCmd = (
-            "ffprobe -v quiet -select_streams s -show_entries stream=index:stream_tags=language -of csv=p=0 \""
+            "ffprobe -loglevel quiet -select_streams s -show_entries stream=index:stream_tags=language -of csv=p=0 \""
             + vidFileSpec
             + "\""
         )
@@ -82,7 +82,9 @@ def HasAudioMoreThanStereo(vidFileSpec):
     result = False
     if os.path.isfile(vidFileSpec):
         ffprobeCmd = (
-            "ffprobe -v quiet -select_streams a -show_entries stream=channels -of csv=p=0 \"" + vidFileSpec + "\""
+            "ffprobe -loglevel quiet -select_streams a -show_entries stream=channels -of csv=p=0 \""
+            + vidFileSpec
+            + "\""
         )
         ffprobeResult = delegator.run(ffprobeCmd, block=True)
         if ffprobeResult.return_code == 0:
@@ -110,7 +112,11 @@ def ExtractSubtitles(vidFileSpec, srtLanguage):
         subFileParts = os.path.splitext(vidFileSpec)
         subFileSpec = subFileParts[0] + "." + srtLanguage + ".srt"
         ffmpegCmd = (
-            "ffmpeg -hide_banner -loglevel error -y -i \"" + vidFileSpec + f"\" -map 0:{stream} \"" + subFileSpec + "\""
+            "ffmpeg -hide_banner -nostats -loglevel error -y -i \""
+            + vidFileSpec
+            + f"\" -map 0:{stream} \""
+            + subFileSpec
+            + "\""
         )
         ffmpegResult = delegator.run(ffmpegCmd, block=True)
         if (ffmpegResult.return_code != 0) or (not os.path.isfile(subFileSpec)):
@@ -467,9 +473,7 @@ class VidCleaner(object):
             if self.reEncode or self.hardCode:
                 if self.hardCode and os.path.isfile(self.cleanSubsFileSpec):
                     self.assSubsFileSpec = self.cleanSubsFileSpec + '.ass'
-                    subConvCmd = (
-                        f"ffmpeg -hide_banner -loglevel error -y -i {self.cleanSubsFileSpec} {self.assSubsFileSpec}"
-                    )
+                    subConvCmd = f"ffmpeg -hide_banner -nostats -loglevel error -y -i {self.cleanSubsFileSpec} {self.assSubsFileSpec}"
                     subConvResult = delegator.run(subConvCmd, block=True)
                     if (subConvResult.return_code == 0) and os.path.isfile(self.assSubsFileSpec):
                         videoArgs = f"{self.vParams} -vf \"ass={self.assSubsFileSpec}\""
@@ -493,7 +497,7 @@ class VidCleaner(object):
             else:
                 subsArgs = " -sn "
             ffmpegCmd = (
-                "ffmpeg -hide_banner -loglevel error -y -i \""
+                "ffmpeg -hide_banner -nostats -loglevel error -y -i \""
                 + self.inputVidFileSpec
                 + "\""
                 + subsArgs
