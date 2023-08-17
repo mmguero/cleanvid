@@ -15,6 +15,7 @@ import delegator
 from datetime import datetime
 from subliminal import *
 from babelfish import Language
+from collections import OrderedDict
 
 try:
     from cleanvid.caselessdictionary import CaselessDictionary
@@ -30,6 +31,7 @@ AUDIO_DEFAULT_PARAMS = '-c:a aac -ab 224k -ar 44100'
 AUDIO_DOWNMIX_FILTER = 'pan=stereo|FL=0.8*FC + 0.6*FL + 0.6*BL + 0.5*LFE|FR=0.8*FC + 0.6*FR + 0.6*BR + 0.5*LFE'
 SUBTITLE_DEFAULT_LANG = 'eng'
 PLEX_AUTO_SKIP_DEFAULT_CONFIG = '{"markers":{},"offsets":{},"tags":{},"allowed":{"users":[],"clients":[],"keys":[]},"blocked":{"users":[],"clients":[],"keys":[]},"clients":{},"mode":{}}'
+
 
 # thanks https://docs.python.org/3/library/itertools.html#recipes
 def pairwise(iterable):
@@ -49,31 +51,67 @@ def GetFormatAndStreamInfo(vidFileSpec):
     return result
 
 
+######## GetStreamSubtitleMap ###############################################
+def GetStreamSubtitleMap(vidFileSpec):
+    result = None
+    if os.path.isfile(vidFileSpec):
+        ffprobeCmd = (
+            "ffprobe -v quiet -select_streams s -show_entries stream=index:stream_tags=language -of csv=p=0 \""
+            + vidFileSpec
+            + "\""
+        )
+        ffprobeResult = delegator.run(ffprobeCmd, block=True)
+        if ffprobeResult.return_code == 0:
+            # e.g. for ara and chi, "-map 0:5 -map 0:7" or "-map 0:s:3 -map 0:s:5"
+            # 2,eng
+            # 3,eng
+            # 4,eng
+            # 5,ara
+            # 6,bul
+            # 7,chi
+            # 8,cze
+            # 9,dan
+            result = OrderedDict()
+            for l in [x.split(',') for x in ffprobeResult.out.split()]:
+                result[int(l[0])] = l[1]
+    return result
+
+
+######## HasAudioMoreThanStereo ###############################################
+def HasAudioMoreThanStereo(vidFileSpec):
+    result = False
+    if os.path.isfile(vidFileSpec):
+        ffprobeCmd = (
+            "ffprobe -v quiet -select_streams a -show_entries stream=channels -of csv=p=0 \"" + vidFileSpec + "\""
+        )
+        ffprobeResult = delegator.run(ffprobeCmd, block=True)
+        if ffprobeResult.return_code == 0:
+            result = any([int(x) for x in list(set(ffprobeResult.out.split())) if int(x) > 2])
+    return result
+
+
+######## SplitLanguageIfForced #####################################################
+def SplitLanguageIfForced(lang):
+    srtLanguageSplit = lang.split(':')
+    srtLanguage = srtLanguageSplit[0]
+    srtForceIndex = int(srtLanguageSplit[1]) if len(srtLanguageSplit) > 1 else None
+    return srtLanguage, srtForceIndex
+
+
 ######## ExtractSubtitles #####################################################
 def ExtractSubtitles(vidFileSpec, srtLanguage):
     subFileSpec = ""
-    if (
-        (streamInfo := GetFormatAndStreamInfo(vidFileSpec))
-        and ('streams' in streamInfo)
-        and (len(streamInfo['streams']) > 0)
-        and (
-            streams := [
-                x
-                for x in streamInfo['streams']
-                if ('codec_type' in x)
-                and ('index' in x)
-                and (x['codec_type'] == 'subtitle')
-                and ('codec_name' in x)
-                and (x['codec_name'] == 'subrip')
-                and ('tags' in x)
-                and ('language' in x['tags'])
-                and (x['tags']['language'] == srtLanguage)
-            ]
-        )
+    srtLanguage, srtForceIndex = SplitLanguageIfForced(srtLanguage)
+    if (streamInfo := GetStreamSubtitleMap(vidFileSpec)) and (
+        stream := next(iter([k for k, v in streamInfo.items() if (v == srtLanguage)]), None)
+        if not srtForceIndex
+        else srtForceIndex
     ):
         subFileParts = os.path.splitext(vidFileSpec)
         subFileSpec = subFileParts[0] + "." + srtLanguage + ".srt"
-        ffmpegCmd = "ffmpeg -y -i \"" + vidFileSpec + f"\" -map 0:{streams[0]['index']} \"" + subFileSpec + "\""
+        ffmpegCmd = (
+            "ffmpeg -hide_banner -loglevel error -y -i \"" + vidFileSpec + f"\" -map 0:{stream} \"" + subFileSpec + "\""
+        )
         ffmpegResult = delegator.run(ffmpegCmd, block=True)
         if (ffmpegResult.return_code != 0) or (not os.path.isfile(subFileSpec)):
             subFileSpec = ""
@@ -89,6 +127,7 @@ def GetSubtitles(vidFileSpec, srtLanguage, offline=False):
         else:
             if os.path.isfile(vidFileSpec):
                 subFileParts = os.path.splitext(vidFileSpec)
+                srtLanguage, srtForceIndex = SplitLanguageIfForced(srtLanguage)
                 subFileSpec = subFileParts[0] + "." + str(Language(srtLanguage)) + ".srt"
                 if not os.path.isfile(subFileSpec):
                     video = Video.fromname(vidFileSpec)
@@ -104,7 +143,6 @@ def GetSubtitles(vidFileSpec, srtLanguage, offline=False):
 ######## UTF8Convert #########################################################
 # attempt to convert any text file to UTF-* without BOM and normalize line endings
 def UTF8Convert(fileSpec, universalEndline=True):
-
     # Read from file
     with open(fileSpec, 'rb') as f:
         raw = f.read()
@@ -181,7 +219,6 @@ class VidCleaner(object):
         plexAutoSkipJson="",
         plexAutoSkipId="",
     ):
-
         if (iVidFileSpec is not None) and os.path.isfile(iVidFileSpec):
             self.inputVidFileSpec = iVidFileSpec
         else:
@@ -282,6 +319,16 @@ class VidCleaner(object):
         newSubs = pysrt.SubRipFile()
         newTimestampPairs = []
 
+        # append a dummy sub at the very end so that pairwise can peek and see nothing
+        subs.append(
+            pysrt.SubRipItem(
+                index=len(subs) + 1,
+                start=(subs[-1].end.seconds if subs else 0) + 1,
+                end=(subs[-1].end.seconds if subs else 0) + 2,
+                text='Fin',
+            )
+        )
+
         # for each subtitle in the set
         # if text contains profanity...
         # OR if the next text contains profanity and lies within the pad ...
@@ -317,7 +364,6 @@ class VidCleaner(object):
                     )
                 )
             ):
-
                 subScrubbed = newText != sub.text
                 if subScrubbed and (self.jsonDumpList is not None):
                     self.jsonDumpList.append(
@@ -411,7 +457,6 @@ class VidCleaner(object):
 
     ######## MultiplexCleanVideo ###################################################
     def MultiplexCleanVideo(self):
-
         # if we're don't *have* to generate a new video file, don't
         # we need to generate a video file if any of the following are true:
         # - we were explicitly asked to re-encode
@@ -422,7 +467,9 @@ class VidCleaner(object):
             if self.reEncode or self.hardCode:
                 if self.hardCode and os.path.isfile(self.cleanSubsFileSpec):
                     self.assSubsFileSpec = self.cleanSubsFileSpec + '.ass'
-                    subConvCmd = f"ffmpeg -y -i {self.cleanSubsFileSpec} {self.assSubsFileSpec}"
+                    subConvCmd = (
+                        f"ffmpeg -hide_banner -loglevel error -y -i {self.cleanSubsFileSpec} {self.assSubsFileSpec}"
+                    )
                     subConvResult = delegator.run(subConvCmd, block=True)
                     if (subConvResult.return_code == 0) and os.path.isfile(self.assSubsFileSpec):
                         videoArgs = f"{self.vParams} -vf \"ass={self.assSubsFileSpec}\""
@@ -434,7 +481,7 @@ class VidCleaner(object):
                     videoArgs = self.vParams
             else:
                 videoArgs = "-c:v copy"
-            if self.aDownmix:
+            if self.aDownmix and HasAudioMoreThanStereo(self.inputVidFileSpec):
                 self.muteTimeList.insert(0, AUDIO_DOWNMIX_FILTER)
             if (not self.subsOnly) and (len(self.muteTimeList) > 0):
                 audioFilter = " -af \"" + ",".join(self.muteTimeList) + "\" "
@@ -446,7 +493,7 @@ class VidCleaner(object):
             else:
                 subsArgs = " -sn "
             ffmpegCmd = (
-                "ffmpeg -y -i \""
+                "ffmpeg -hide_banner -loglevel error -y -i \""
                 + self.inputVidFileSpec
                 + "\""
                 + subsArgs
@@ -499,7 +546,7 @@ def RunCleanvid():
     parser.add_argument(
         '-l',
         '--lang',
-        help=f'language for srt download (default is "{SUBTITLE_DEFAULT_LANG}")',
+        help=f'language for extracting srt from video file or srt download (default is "{SUBTITLE_DEFAULT_LANG}")',
         default=SUBTITLE_DEFAULT_LANG,
         metavar='<language>',
     )
@@ -558,7 +605,9 @@ def RunCleanvid():
     parser.add_argument(
         '-a', '--audio-params', help='Audio parameters for ffmpeg', dest='aParams', default=AUDIO_DEFAULT_PARAMS
     )
-    parser.add_argument('-d', '--downmix', help='Downmix to stereo', dest='aDownmix', action='store_true')
+    parser.add_argument(
+        '-d', '--downmix', help='Downmix to stereo (if not already stereo)', dest='aDownmix', action='store_true'
+    )
     parser.set_defaults(
         embedSubs=False,
         fullSubs=False,
