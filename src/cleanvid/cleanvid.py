@@ -5,7 +5,6 @@ import base64
 import chardet
 import codecs
 import errno
-import itertools
 import json
 import os
 import shutil
@@ -32,6 +31,13 @@ AUDIO_DEFAULT_PARAMS = '-c:a aac -ab 224k -ar 44100'
 AUDIO_DOWNMIX_FILTER = 'pan=stereo|FL=0.8*FC + 0.6*FL + 0.6*BL + 0.5*LFE|FR=0.8*FC + 0.6*FR + 0.6*BR + 0.5*LFE'
 SUBTITLE_DEFAULT_LANG = 'eng'
 PLEX_AUTO_SKIP_DEFAULT_CONFIG = '{"markers":{},"offsets":{},"tags":{},"allowed":{"users":[],"clients":[],"keys":[]},"blocked":{"users":[],"clients":[],"keys":[]},"clients":{},"mode":{}}'
+
+
+# thanks https://docs.python.org/3/library/itertools.html#recipes
+def pairwise(iterable):
+    a, b = tee(iterable)
+    next(b, None)
+    return zip(a, b)
 
 
 ######## GetFormatAndStreamInfo ###############################################
@@ -335,7 +341,7 @@ class VidCleaner(object):
         # OR if the previous text contained profanity and lies within the pad ...
         # then include the subtitle in the new set
         prevNaughtySub = None
-        for sub, subPeek in itertools.pairwise(subs):
+        for sub, subPeek in pairwise(subs):
             newText = replacer.sub(lambda x: self.swearsMap[x.group()], sub.text)
             newTextPeek = (
                 replacer.sub(lambda x: self.swearsMap[x.group()], subPeek.text) if (subPeek is not None) else None
@@ -422,7 +428,7 @@ class VidCleaner(object):
             plexDict["markers"][self.plexAutoSkipId] = []
             plexDict["mode"][self.plexAutoSkipId] = "volume"
 
-        for timePair, timePairPeek in itertools.pairwise(newTimestampPairs):
+        for timePair, timePairPeek in pairwise(newTimestampPairs):
             lineStart = (
                 (timePair[0].hour * 60.0 * 60.0)
                 + (timePair[0].minute * 60.0)
