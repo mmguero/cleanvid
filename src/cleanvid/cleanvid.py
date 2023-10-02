@@ -210,7 +210,7 @@ class VidCleaner(object):
         oVidFileSpec,
         oSubsFileSpec,
         iSwearsFileSpec,
-        swearsPadSec=0,
+        swearsPadSec=0.0,
         embedSubs=False,
         fullSubs=False,
         subsOnly=False,
@@ -248,7 +248,7 @@ class VidCleaner(object):
             if os.path.isfile(self.cleanSubsFileSpec):
                 os.remove(self.cleanSubsFileSpec)
 
-        self.swearsPadMillisec = swearsPadSec * 1000
+        self.swearsPadMillisec = round(swearsPadSec * 1000.0)
         self.embedSubs = embedSubs
         self.fullSubs = fullSubs
         self.subsOnly = subsOnly or edl or (plexAutoSkipJson and plexAutoSkipId)
@@ -576,7 +576,7 @@ def RunCleanvid():
         metavar='<language>',
     )
     parser.add_argument(
-        '-p', '--pad', help='pad (seconds) around profanity', metavar='<int>', dest="pad", type=int, default=0
+        '-p', '--pad', help='pad (seconds) around profanity', metavar='<int>', dest="pad", type=float, default=0.0
     )
     parser.add_argument(
         '-e',
