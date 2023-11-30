@@ -4,7 +4,7 @@ LABEL maintainer="mero.mero.guero@gmail.com"
 LABEL org.opencontainers.image.authors='mero.mero.guero@gmail.com'
 LABEL org.opencontainers.image.url='https://github.com/mmguero/cleanvid'
 LABEL org.opencontainers.image.source='https://github.com/mmguero/cleanvid'
-LABEL org.opencontainers.image.title='ghcr.io/mmguero/cleanvid'
+LABEL org.opencontainers.image.title='oci.guero.top/cleanvid'
 LABEL org.opencontainers.image.description='Containerized cleanvid'
 
 ENV PYTHONUNBUFFERED 1
