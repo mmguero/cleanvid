@@ -12,7 +12,6 @@ ENV PYTHONUNBUFFERED 1
 ADD . /usr/local/src/cleanvid
 
 RUN apk add --update --no-cache py3-pip ttf-liberation && \
-    python3 -m ensurepip && \
     python3 -m pip install --break-system-packages --no-cache /usr/local/src/cleanvid && \
     rm -rf /usr/local/src/cleanvid
     
