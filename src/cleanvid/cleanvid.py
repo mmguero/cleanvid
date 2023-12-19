@@ -88,7 +88,13 @@ def HasAudioMoreThanStereo(vidFileSpec):
         )
         ffprobeResult = delegator.run(ffprobeCmd, block=True)
         if ffprobeResult.return_code == 0:
-            result = any([int(x) for x in list(set(ffprobeResult.out.split())) if int(x) > 2])
+            result = any(
+                [
+                    x
+                    for x in [int(''.join([z for z in y if z.isdigit()])) for y in list(set(ffprobeResult.out.split()))]
+                    if x > 2
+                ]
+            )
     return result
 
 
