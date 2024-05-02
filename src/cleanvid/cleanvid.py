@@ -111,9 +111,11 @@ def ExtractSubtitles(vidFileSpec, srtLanguage):
     subFileSpec = ""
     srtLanguage, srtForceIndex = SplitLanguageIfForced(srtLanguage)
     if (streamInfo := GetStreamSubtitleMap(vidFileSpec)) and (
-        stream := next(iter([k for k, v in streamInfo.items() if (v == srtLanguage)]), None)
-        if not srtForceIndex
-        else srtForceIndex
+        stream := (
+            next(iter([k for k, v in streamInfo.items() if (v == srtLanguage)]), None)
+            if not srtForceIndex
+            else srtForceIndex
+        )
     ):
         subFileParts = os.path.splitext(vidFileSpec)
         subFileSpec = subFileParts[0] + "." + srtLanguage + ".srt"
@@ -195,7 +197,8 @@ class VidCleaner(object):
     subsOnly = False
     edl = False
     hardCode = False
-    reEncode = False
+    reEncodeVideo = False
+    reEncodeAudio = False
     unalteredVideo = False
     subsLang = SUBTITLE_DEFAULT_LANG
     vParams = VIDEO_DEFAULT_PARAMS
@@ -223,7 +226,8 @@ class VidCleaner(object):
         edl=False,
         jsonDump=False,
         subsLang=SUBTITLE_DEFAULT_LANG,
-        reEncode=False,
+        reEncodeVideo=False,
+        reEncodeAudio=False,
         hardCode=False,
         vParams=VIDEO_DEFAULT_PARAMS,
         aParams=AUDIO_DEFAULT_PARAMS,
@@ -262,7 +266,8 @@ class VidCleaner(object):
         self.jsonDumpList = [] if jsonDump else None
         self.plexAutoSkipJson = plexAutoSkipJson
         self.plexAutoSkipId = plexAutoSkipId
-        self.reEncode = reEncode
+        self.reEncodeVideo = reEncodeVideo
+        self.reEncodeAudio = reEncodeAudio
         self.hardCode = hardCode
         self.subsLang = subsLang
         self.vParams = vParams
@@ -496,8 +501,14 @@ class VidCleaner(object):
         # - we are hard-coding (burning) subs
         # - we are embedding a subtitle stream
         # - we are not doing "subs only" or EDL mode and there more than zero mute sections
-        if self.reEncode or self.hardCode or self.embedSubs or ((not self.subsOnly) and (len(self.muteTimeList) > 0)):
-            if self.reEncode or self.hardCode:
+        if (
+            self.reEncodeVideo
+            or self.reEncodeAudio
+            or self.hardCode
+            or self.embedSubs
+            or ((not self.subsOnly) and (len(self.muteTimeList) > 0))
+        ):
+            if self.reEncodeVideo or self.hardCode:
                 if self.hardCode and os.path.isfile(self.cleanSubsFileSpec):
                     self.assSubsFileSpec = self.cleanSubsFileSpec + '.ass'
                     subConvCmd = f"ffmpeg -hide_banner -nostats -loglevel error -y -i {self.cleanSubsFileSpec} {self.assSubsFileSpec}"
@@ -622,7 +633,8 @@ def RunCleanvid():
         dest='json',
         action='store_true',
     )
-    parser.add_argument('-r', '--re-encode', help='Re-encode video', dest='reEncode', action='store_true')
+    parser.add_argument('--re-encode-video', help='Re-encode video', dest='reEncodeVideo', action='store_true')
+    parser.add_argument('--re-encode-audio', help='Re-encode audio', dest='reEncodeAudio', action='store_true')
     parser.add_argument(
         '-b', '--burn', help='Hard-coded subtitles (implies re-encode)', dest='hardCode', action='store_true'
     )
@@ -644,7 +656,8 @@ def RunCleanvid():
         fullSubs=False,
         subsOnly=False,
         offline=False,
-        reEncode=False,
+        reEncodeVideo=False,
+        reEncodeAudio=False,
         hardCode=False,
         edl=False,
     )
@@ -682,7 +695,8 @@ def RunCleanvid():
         args.edl,
         args.json,
         lang,
-        args.reEncode,
+        args.reEncodeVideo,
+        args.reEncodeAudio,
         args.hardCode,
         args.vParams,
         args.aParams,

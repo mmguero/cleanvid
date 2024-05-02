@@ -1,6 +1,6 @@
 """cleanvid is a little script to mute profanity in video files."""
 
-__version__ = "1.5.6"
+__version__ = "1.5.7"
 __author__ = "Seth Grover <mero.mero.guero@gmail.com>"
 __all__ = []
 
