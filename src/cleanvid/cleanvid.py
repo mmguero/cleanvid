@@ -204,6 +204,7 @@ class VidCleaner(object):
     vParams = VIDEO_DEFAULT_PARAMS
     aParams = AUDIO_DEFAULT_PARAMS
     aDownmix = False
+    threads = None
     plexAutoSkipJson = ""
     plexAutoSkipId = ""
     swearsMap = CaselessDictionary({})
@@ -232,6 +233,7 @@ class VidCleaner(object):
         vParams=VIDEO_DEFAULT_PARAMS,
         aParams=AUDIO_DEFAULT_PARAMS,
         aDownmix=False,
+        threads=None,
         plexAutoSkipJson="",
         plexAutoSkipId="",
     ):
@@ -273,6 +275,7 @@ class VidCleaner(object):
         self.vParams = vParams
         self.aParams = aParams
         self.aDownmix = aDownmix
+        self.threads = threads
         if self.vParams.startswith('base64:'):
             self.vParams = base64.b64decode(self.vParams[7:]).decode('utf-8')
         if self.aParams.startswith('base64:'):
@@ -541,7 +544,7 @@ class VidCleaner(object):
                 + subsArgs
                 + videoArgs
                 + audioFilter
-                + f"{self.aParams} \""
+                + f"{self.aParams} {'' if self.threads is None else ('-threads '+ str(int(self.threads)))} \""
                 + self.outputVidFileSpec
                 + "\""
             )
@@ -651,6 +654,15 @@ def RunCleanvid():
     parser.add_argument(
         '-d', '--downmix', help='Downmix to stereo (if not already stereo)', dest='aDownmix', action='store_true'
     )
+    parser.add_argument(
+        '-t',
+        '--threads',
+        help='ffmpeg -threads value',
+        metavar='<int>',
+        dest="threads",
+        type=int,
+        default=None,
+    )
     parser.set_defaults(
         embedSubs=False,
         fullSubs=False,
@@ -701,6 +713,7 @@ def RunCleanvid():
         args.vParams,
         args.aParams,
         args.aDownmix,
+        args.threads,
         plexFile,
         args.plexAutoSkipId,
     )
