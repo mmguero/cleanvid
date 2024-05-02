@@ -204,7 +204,8 @@ class VidCleaner(object):
     vParams = VIDEO_DEFAULT_PARAMS
     aParams = AUDIO_DEFAULT_PARAMS
     aDownmix = False
-    threads = None
+    threadsInput = None
+    threadsEncoding = None
     plexAutoSkipJson = ""
     plexAutoSkipId = ""
     swearsMap = CaselessDictionary({})
@@ -233,7 +234,8 @@ class VidCleaner(object):
         vParams=VIDEO_DEFAULT_PARAMS,
         aParams=AUDIO_DEFAULT_PARAMS,
         aDownmix=False,
-        threads=None,
+        threadsInput=None,
+        threadsEncoding=None,
         plexAutoSkipJson="",
         plexAutoSkipId="",
     ):
@@ -275,7 +277,8 @@ class VidCleaner(object):
         self.vParams = vParams
         self.aParams = aParams
         self.aDownmix = aDownmix
-        self.threads = threads
+        self.threadsInput = threadsInput
+        self.threadsEncoding = threadsEncoding
         if self.vParams.startswith('base64:'):
             self.vParams = base64.b64decode(self.vParams[7:]).decode('utf-8')
         if self.aParams.startswith('base64:'):
@@ -538,13 +541,13 @@ class VidCleaner(object):
             else:
                 subsArgs = " -sn "
             ffmpegCmd = (
-                "ffmpeg -hide_banner -nostats -loglevel error -y -i \""
+                f"ffmpeg -hide_banner -nostats -loglevel error -y {'' if self.threadsInput is None else ('-threads '+ str(int(self.threadsInput)))} -i \""
                 + self.inputVidFileSpec
                 + "\""
                 + subsArgs
                 + videoArgs
                 + audioFilter
-                + f"{self.aParams} {'' if self.threads is None else ('-threads '+ str(int(self.threads)))} \""
+                + f"{self.aParams} {'' if self.threadsEncoding is None else ('-threads '+ str(int(self.threadsEncoding)))} \""
                 + self.outputVidFileSpec
                 + "\""
             )
@@ -655,9 +658,24 @@ def RunCleanvid():
         '-d', '--downmix', help='Downmix to stereo (if not already stereo)', dest='aDownmix', action='store_true'
     )
     parser.add_argument(
-        '-t',
+        '--threads-input',
+        help='ffmpeg global options -threads value',
+        metavar='<int>',
+        dest="threadsInput",
+        type=int,
+        default=None,
+    )
+    parser.add_argument(
+        '--threads-encoding',
+        help='ffmpeg encoding options -threads value',
+        metavar='<int>',
+        dest="threadsEncoding",
+        type=int,
+        default=None,
+    )
+    parser.add_argument(
         '--threads',
-        help='ffmpeg -threads value',
+        help='ffmpeg -threads value (for both global options and encoding)',
         metavar='<int>',
         dest="threads",
         type=int,
@@ -713,7 +731,8 @@ def RunCleanvid():
         args.vParams,
         args.aParams,
         args.aDownmix,
-        args.threads,
+        args.threadsInput if args.threadsInput is not None else args.threads,
+        args.threadsEncoding if args.threadsEncoding is not None else args.threads,
         plexFile,
         args.plexAutoSkipId,
     )
