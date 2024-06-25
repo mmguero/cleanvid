@@ -445,6 +445,10 @@ class VidCleaner(object):
             plexDict["markers"][self.plexAutoSkipId] = []
             plexDict["mode"][self.plexAutoSkipId] = "volume"
 
+        # Append one at the very end of the file to work with pairwise
+        newTimes = [pysrt.SubRipTime.from_ordinal(subs[-1].end.ordinal).to_time(), None]
+        newTimestampPairs.append(newTimes)
+
         for timePair, timePairPeek in pairwise(newTimestampPairs):
             lineStart = (
                 (timePair[0].hour * 60.0 * 60.0)
