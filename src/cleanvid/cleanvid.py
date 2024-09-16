@@ -595,17 +595,20 @@ class VidCleaner(object):
                 audioFilter = " "
             if self.embedSubs and os.path.isfile(self.cleanSubsFileSpec):
                 outFileParts = os.path.splitext(self.outputVidFileSpec)
-                subsArgs = f" -i \"{self.cleanSubsFileSpec}\" -map 0 -map -0:s -map 1 -c:s {'mov_text' if outFileParts[1] == '.mp4' else 'srt'} -disposition:s:0 default -metadata:s:s:0 language={self.subsLang} "
+                subsArgsInput = f" -i \"{self.cleanSubsFileSpec}\" "
+                subsArgsEmbed = f" -map 1:s -c:s {'mov_text' if outFileParts[1] == '.mp4' else 'srt'} -disposition:s:0 default -metadata:s:s:0 language={self.subsLang} "
             else:
-                subsArgs = " -sn "
+                subsArgsInput = ""
+                subsArgsEmbed = " -sn "
 
             ffmpegCmd = (
                 f"ffmpeg -hide_banner -nostats -loglevel error -y {'' if self.threadsInput is None else ('-threads '+ str(int(self.threadsInput)))} -i \""
                 + self.inputVidFileSpec
                 + "\""
+                + subsArgsInput
                 + audioFilter
                 + f' -map 0:v -map "[a{audioStreamOnlyIndex}]" {audioUnchangedMapList} '
-                + subsArgs
+                + subsArgsEmbed
                 + videoArgs
                 + f" {self.aParams} {'' if self.threadsEncoding is None else ('-threads '+ str(int(self.threadsEncoding)))} \""
                 + self.outputVidFileSpec
