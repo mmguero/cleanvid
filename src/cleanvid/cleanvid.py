@@ -51,6 +51,21 @@ def GetFormatAndStreamInfo(vidFileSpec):
     return result
 
 
+######## GetAudioStreamsInfo ###############################################
+def GetAudioStreamsInfo(vidFileSpec):
+    result = None
+    if os.path.isfile(vidFileSpec):
+        ffprobeCmd = (
+            "ffprobe -loglevel quiet -select_streams a -show_entries stream=index,codec_name,sample_rate,channel_layout:stream_tags=language -of json \""
+            + vidFileSpec
+            + "\""
+        )
+        ffprobeResult = delegator.run(ffprobeCmd, block=True)
+        if ffprobeResult.return_code == 0:
+            result = json.loads(ffprobeResult.out)
+    return result
+
+
 ######## GetStreamSubtitleMap ###############################################
 def GetStreamSubtitleMap(vidFileSpec):
     result = None
@@ -202,6 +217,7 @@ class VidCleaner(object):
     unalteredVideo = False
     subsLang = SUBTITLE_DEFAULT_LANG
     vParams = VIDEO_DEFAULT_PARAMS
+    audioStreamIdx = None
     aParams = AUDIO_DEFAULT_PARAMS
     aDownmix = False
     threadsInput = None
@@ -232,6 +248,7 @@ class VidCleaner(object):
         reEncodeAudio=False,
         hardCode=False,
         vParams=VIDEO_DEFAULT_PARAMS,
+        audioStreamIdx=None,
         aParams=AUDIO_DEFAULT_PARAMS,
         aDownmix=False,
         threadsInput=None,
@@ -275,6 +292,7 @@ class VidCleaner(object):
         self.hardCode = hardCode
         self.subsLang = subsLang
         self.vParams = vParams
+        self.audioStreamIdx = audioStreamIdx
         self.aParams = aParams
         self.aDownmix = aDownmix
         self.threadsInput = threadsInput
@@ -533,10 +551,46 @@ class VidCleaner(object):
                     videoArgs = self.vParams
             else:
                 videoArgs = "-c:v copy"
+
+            audioStreamOnlyIndex = 0
+            if audioStreams := GetAudioStreamsInfo(self.inputVidFileSpec).get('streams', []):
+                if len(audioStreams) > 0:
+                    if self.audioStreamIdx is None:
+                        if len(audioStreams) == 1:
+                            if 'index' in audioStreams[0]:
+                                self.audioStreamIdx = audioStreams[0]['index']
+                            else:
+                                raise ValueError(f'Could not determine audio stream index for {self.inputVidFileSpec}')
+                        else:
+                            raise ValueError(
+                                f'Multiple audio streams, specify audio stream index with --audio-stream-index'
+                            )
+                    elif any(stream.get('index', -1) == self.audioStreamIdx for stream in audioStreams):
+                        audioStreamOnlyIndex = next(
+                            (
+                                i
+                                for i, stream in enumerate(audioStreams)
+                                if stream.get('index', -1) == self.audioStreamIdx
+                            ),
+                            0,
+                        )
+                    else:
+                        raise ValueError(
+                            f'Audio stream index {self.audioStreamIdx} is invalid for {self.inputVidFileSpec}'
+                        )
+                else:
+                    raise ValueError(f'No audio streams found in {self.inputVidFileSpec}')
+            else:
+                raise ValueError(f'Could not determine audio streams in {self.inputVidFileSpec}')
+            self.aParams = re.sub(r"-c:a(\s+)", rf"-c:a:{str(audioStreamOnlyIndex)}\1", self.aParams)
+            audioUnchangedMapList = ' '.join(
+                f'-map 0:a:{i}' if i != audioStreamOnlyIndex else '' for i in range(len(audioStreams))
+            )
+
             if self.aDownmix and HasAudioMoreThanStereo(self.inputVidFileSpec):
                 self.muteTimeList.insert(0, AUDIO_DOWNMIX_FILTER)
             if (not self.subsOnly) and (len(self.muteTimeList) > 0):
-                audioFilter = " -af \"" + ",".join(self.muteTimeList) + "\" "
+                audioFilter = f' -filter_complex "[0:a:{audioStreamOnlyIndex}]{",".join(self.muteTimeList)}[a{audioStreamOnlyIndex}]"'
             else:
                 audioFilter = " "
             if self.embedSubs and os.path.isfile(self.cleanSubsFileSpec):
@@ -544,14 +598,16 @@ class VidCleaner(object):
                 subsArgs = f" -i \"{self.cleanSubsFileSpec}\" -map 0 -map -0:s -map 1 -c:s {'mov_text' if outFileParts[1] == '.mp4' else 'srt'} -disposition:s:0 default -metadata:s:s:0 language={self.subsLang} "
             else:
                 subsArgs = " -sn "
+
             ffmpegCmd = (
                 f"ffmpeg -hide_banner -nostats -loglevel error -y {'' if self.threadsInput is None else ('-threads '+ str(int(self.threadsInput)))} -i \""
                 + self.inputVidFileSpec
                 + "\""
+                + audioFilter
+                + f' -map 0:v -map "[a{audioStreamOnlyIndex}]" {audioUnchangedMapList} '
                 + subsArgs
                 + videoArgs
-                + audioFilter
-                + f"{self.aParams} {'' if self.threadsEncoding is None else ('-threads '+ str(int(self.threadsEncoding)))} \""
+                + f" {self.aParams} {'' if self.threadsEncoding is None else ('-threads '+ str(int(self.threadsEncoding)))} \""
                 + self.outputVidFileSpec
                 + "\""
             )
@@ -662,6 +718,20 @@ def RunCleanvid():
         '-d', '--downmix', help='Downmix to stereo (if not already stereo)', dest='aDownmix', action='store_true'
     )
     parser.add_argument(
+        '--audio-stream-index',
+        help='Index of audio stream to process',
+        metavar='<int>',
+        dest="audioStreamIdx",
+        type=int,
+        default=None,
+    )
+    parser.add_argument(
+        '--audio-stream-list',
+        help='Show list of audio streams (to get index for --audio-stream-index)',
+        action='store_true',
+        dest="audioStreamIdxList",
+    )
+    parser.add_argument(
         '--threads-input',
         help='ffmpeg global options -threads value',
         metavar='<int>',
@@ -686,62 +756,79 @@ def RunCleanvid():
         default=None,
     )
     parser.set_defaults(
+        audioStreamIdxList=False,
+        edl=False,
         embedSubs=False,
         fullSubs=False,
-        subsOnly=False,
-        offline=False,
-        reEncodeVideo=False,
-        reEncodeAudio=False,
         hardCode=False,
-        edl=False,
+        offline=False,
+        reEncodeAudio=False,
+        reEncodeVideo=False,
+        subsOnly=False,
     )
     args = parser.parse_args()
 
-    inFile = args.input
-    outFile = args.output
-    subsFile = args.subs
-    lang = args.lang
-    plexFile = args.plexAutoSkipJson
-    if inFile:
-        inFileParts = os.path.splitext(inFile)
-        if not outFile:
-            outFile = inFileParts[0] + "_clean" + inFileParts[1]
-        if not subsFile:
-            subsFile = GetSubtitles(inFile, lang, args.offline)
-        if args.plexAutoSkipId and not plexFile:
-            plexFile = inFileParts[0] + "_PlexAutoSkip_clean.json"
-
-    if plexFile and not args.plexAutoSkipId:
-        raise ValueError(
-            f'Content ID must be specified if creating a PlexAutoSkip JSON file (https://github.com/mdhiggins/PlexAutoSkip/wiki/Identifiers)'
+    if args.audioStreamIdxList:
+        audioStreamsInfo = GetAudioStreamsInfo(args.input)
+        # e.g.:
+        #   1: aac, 44100 Hz, stereo, eng
+        #   3: opus, 48000 Hz, stereo, jpn
+        print(
+            '\n'.join(
+                [
+                    f"{x['index']}: {x.get('codec_name', 'unknown codec')}, {x.get('sample_rate', 'unknown')} Hz, {x.get('channel_layout', 'unknown channel layout')}, {x.get('tags', {}).get('language', 'unknown language')}"
+                    for x in audioStreamsInfo.get("streams", [])
+                ]
+            )
         )
 
-    cleaner = VidCleaner(
-        inFile,
-        subsFile,
-        outFile,
-        args.subsOut,
-        args.swears,
-        args.pad,
-        args.embedSubs,
-        args.fullSubs,
-        args.subsOnly,
-        args.edl,
-        args.json,
-        lang,
-        args.reEncodeVideo,
-        args.reEncodeAudio,
-        args.hardCode,
-        args.vParams,
-        args.aParams,
-        args.aDownmix,
-        args.threadsInput if args.threadsInput is not None else args.threads,
-        args.threadsEncoding if args.threadsEncoding is not None else args.threads,
-        plexFile,
-        args.plexAutoSkipId,
-    )
-    cleaner.CreateCleanSubAndMuteList()
-    cleaner.MultiplexCleanVideo()
+    else:
+        inFile = args.input
+        outFile = args.output
+        subsFile = args.subs
+        lang = args.lang
+        plexFile = args.plexAutoSkipJson
+        if inFile:
+            inFileParts = os.path.splitext(inFile)
+            if not outFile:
+                outFile = inFileParts[0] + "_clean" + inFileParts[1]
+            if not subsFile:
+                subsFile = GetSubtitles(inFile, lang, args.offline)
+            if args.plexAutoSkipId and not plexFile:
+                plexFile = inFileParts[0] + "_PlexAutoSkip_clean.json"
+
+        if plexFile and not args.plexAutoSkipId:
+            raise ValueError(
+                f'Content ID must be specified if creating a PlexAutoSkip JSON file (https://github.com/mdhiggins/PlexAutoSkip/wiki/Identifiers)'
+            )
+
+        cleaner = VidCleaner(
+            inFile,
+            subsFile,
+            outFile,
+            args.subsOut,
+            args.swears,
+            args.pad,
+            args.embedSubs,
+            args.fullSubs,
+            args.subsOnly,
+            args.edl,
+            args.json,
+            lang,
+            args.reEncodeVideo,
+            args.reEncodeAudio,
+            args.hardCode,
+            args.vParams,
+            args.audioStreamIdx,
+            args.aParams,
+            args.aDownmix,
+            args.threadsInput if args.threadsInput is not None else args.threads,
+            args.threadsEncoding if args.threadsEncoding is not None else args.threads,
+            plexFile,
+            args.plexAutoSkipId,
+        )
+        cleaner.CreateCleanSubAndMuteList()
+        cleaner.MultiplexCleanVideo()
 
 
 #################################################################################

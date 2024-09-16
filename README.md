@@ -7,7 +7,7 @@
 1. The user provides as input a video file and matching `.srt` subtitle file. If subtitles are not provided explicitly, they will be extracted from the video file if possible; if not, [`subliminal`](https://github.com/Diaoul/subliminal) is used to attempt to download the best matching `.srt` file.
 2. [`pysrt`](https://github.com/byroot/pysrt) is used to parse the `.srt` file, and each entry is checked against a [list](./src/cleanvid/swears.txt) of profanity or other words or phrases you'd like muted. Mappings can be provided (eg., map "sh*t" to "poop"), otherwise the word will be replaced with *****.
 3. A new "clean" `.srt` file is created. with *only* those phrases containing the censored/replaced objectional language.
-4. [`ffmpeg`](https://www.ffmpeg.org/) is used to create a cleaned video file. This file contains the original video stream, but the audio stream is muted during the segments containing objectional language. The audio stream is re-encoded as AAC and remultiplexed back together with the video. Optionally, the clean `.srt` file can be embedded in the cleaned video file as a subtitle track.
+4. [`ffmpeg`](https://www.ffmpeg.org/) is used to create a cleaned video file. This file contains the original video stream, but the specified audio stream is muted during the segments containing objectional language. That audio stream is re-encoded and remultiplexed back together with the video. Optionally, the clean `.srt` file can be embedded in the cleaned video file as a subtitle track.
 
 You can then use your favorite media player to play the cleaned video file together with the cleaned subtitles.
 
@@ -49,10 +49,9 @@ To install FFmpeg, use your operating system's package manager or install binari
 ## usage
 
 ```
-usage: cleanvid.py [-h] [-s <srt>] -i <input video> [-o <output video>] 
-                   [--plex-auto-skip-json <output JSON>] [--plex-auto-skip-id <content identifier>]
-                   [--subs-output <output srt>] [-w <profanity file>] [-l <language>] [-p <int>] [-e] [-f] [--subs-only] [--offline] [--edl] [-r] [-b]
-                   [-v VPARAMS] [-a APARAMS]
+usage: cleanvid [-h] [-s <srt>] -i <input video> [-o <output video>] [--plex-auto-skip-json <output JSON>] [--plex-auto-skip-id <content identifier>] [--subs-output <output srt>]
+                [-w <profanity file>] [-l <language>] [-p <int>] [-e] [-f] [--subs-only] [--offline] [--edl] [--json] [--re-encode-video] [--re-encode-audio] [-b] [-v VPARAMS] [-a APARAMS]
+                [-d] [--audio-stream-index <int>] [--audio-stream-list] [--threads-input <int>] [--threads-encoding <int>] [--threads <int>]
 
 options:
   -h, --help            show this help message and exit
@@ -71,7 +70,7 @@ options:
   -w <profanity file>, --swears <profanity file>
                         text file containing profanity (with optional mapping)
   -l <language>, --lang <language>
-                        language for srt download (default is "eng")
+                        language for extracting srt from video file or srt download (default is "eng")
   -p <int>, --pad <int>
                         pad (seconds) around profanity
   -e, --embed-subs      embed subtitles in resulting video file
@@ -79,12 +78,23 @@ options:
   --subs-only           only operate on subtitles (do not alter audio)
   --offline             don't attempt to download subtitles
   --edl                 generate MPlayer EDL file with mute actions (also implies --subs-only)
-  -r, --re-encode       Re-encode video
+  --json                generate JSON file with muted subtitles and their contents
+  --re-encode-video     Re-encode video
+  --re-encode-audio     Re-encode audio
   -b, --burn            Hard-coded subtitles (implies re-encode)
   -v VPARAMS, --video-params VPARAMS
                         Video parameters for ffmpeg (only if re-encoding)
   -a APARAMS, --audio-params APARAMS
                         Audio parameters for ffmpeg
+  -d, --downmix         Downmix to stereo (if not already stereo)
+  --audio-stream-index <int>
+                        Index of audio stream to process
+  --audio-stream-list   Show list of audio streams (to get index for --audio-stream-index)
+  --threads-input <int>
+                        ffmpeg global options -threads value
+  --threads-encoding <int>
+                        ffmpeg encoding options -threads value
+  --threads <int>       ffmpeg -threads value (for both global options and encoding)
 ```
 
 ### Docker
