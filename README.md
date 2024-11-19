@@ -99,7 +99,7 @@ options:
 
 ### Docker
 
-Alternately, a [Dockerfile](./docker/Dockerfile) is provided to allow you to run cleanvid in Docker. You can build the `oci.guero.top/cleanvid:latest` Docker image with [`build_docker.sh`](./docker/build_docker.sh), then run [`cleanvid-docker.sh`](./docker/cleanvid-docker.sh) inside the directory where your video/subtitle files are located.
+Alternately, a [Dockerfile](./docker/Dockerfile) is provided to allow you to run cleanvid in Docker. You can build the `oci.guero.org/cleanvid:latest` Docker image with [`build_docker.sh`](./docker/build_docker.sh), then run [`cleanvid-docker.sh`](./docker/cleanvid-docker.sh) inside the directory where your video/subtitle files are located.
 
 ## Contributing
 

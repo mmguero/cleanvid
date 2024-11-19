@@ -1,6 +1,6 @@
 #!/usr/bin/env bash
 
-IMAGE="${CLEANVID_IMAGE:-oci.guero.top/cleanvid:latest}"
+IMAGE="${CLEANVID_IMAGE:-oci.guero.org/cleanvid:latest}"
 ENGINE="${CONTAINER_ENGINE:-docker}"
 
 set -e
