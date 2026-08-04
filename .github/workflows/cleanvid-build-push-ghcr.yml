@@ -1,6 +1,5 @@
 ---
 name: cleanvid-build-push-ghcr
-
 on:
   push:
     branches:
@@ -10,7 +9,6 @@ on:
   repository_dispatch:
   schedule:
     - cron: '0 12 15 * *'
-
 env:
   REGISTRY: ghcr.io
   IMAGE_NAME: ghcr.io/${{ github.repository_owner }}/cleanvid
@@ -18,42 +16,31 @@ env:
   IMAGE_ARCH: amd64
   REPO_CONTEXT: .
   REPO_CONTAINERFILE: ./docker/Dockerfile
-
+concurrency:
+  group: cleanvid-${{ github.ref }}
+  cancel-in-progress: true
 jobs:
   buildah:
     runs-on: ubuntu-latest
     permissions:
-      actions: write
       packages: write
       contents: read
       security-events: write
     steps:
-      -
-        name: Cancel previous run in progress
-        id: cancel-previous-runs
-        uses: styfle/cancel-workflow-action@d07a454dad7609a92316b57b23c9ccfd4f59af66
-        with:
-          ignore_sha: true
-          all_but_latest: true
-          access_token: ${{ secrets.GITHUB_TOKEN }}
-      -
-        name: Checkout
+      - name: Checkout
         id: repo-checkout
         uses: actions/checkout@de0fac2e4500dabe0009e67214ff5f5447ce83dd
-      -
-        name: Set up QEMU
+      - name: Set up QEMU
         id: setup-qemu
         uses: docker/setup-qemu-action@v2
-      -
-        name: Log in to registry
+      - name: Log in to registry
         id: registry-login
         uses: redhat-actions/podman-login@v1
         with:
           registry: ${{ env.REGISTRY }}
           username: ${{ github.repository_owner }}
           password: ${{ secrets.GITHUB_TOKEN }}
-      -
-        name: Build
+      - name: Build
         id: build-image
         uses: redhat-actions/buildah-build@v2
         with:
@@ -62,8 +49,7 @@ jobs:
           context: ${{ env.REPO_CONTEXT }}
           containerfiles: ${{ env.REPO_CONTAINERFILE }}
           archs: ${{ env.IMAGE_ARCH }}
-      -
-        name: Run Trivy vulnerability scanner
+      - name: Run Trivy vulnerability scanner
         id: trivy-scan
         uses: aquasecurity/trivy-action@ed142fd0673e97e23eac54620cfb913e5ce36c25
         env:
@@ -78,14 +64,12 @@ jobs:
           hide-progress: true
           ignore-unfixed: true
           exit-code: '0'
-      -
-        name: Upload Trivy scan results to GitHub Security tab
+      - name: Upload Trivy scan results to GitHub Security tab
         uses: github/codeql-action/upload-sarif@9e0d7b8d25671d64c341c19c0152d693099fb5ba
         if: always()
         with:
           sarif_file: 'trivy-results.sarif'
-      -
-        name: Push
+      - name: Push
         id: push-to-ghcr
         uses: redhat-actions/push-to-registry@v2
         with:
